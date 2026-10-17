@@ -1,14 +1,12 @@
 import com.codeborne.selenide.Configuration;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import static com.codeborne.selenide.Condition.appear;
+import static com.codeborne.selenide.Condition.text;
 import static com.codeborne.selenide.Selectors.byText;
-
-
-import java.io.File;
-
-import static com.codeborne.selenide.Configuration.browser;
 import static com.codeborne.selenide.Selenide.*;
+import static com.codeborne.selenide.Selenide.$;
 
 public class RegistrationTests {
     @BeforeAll
@@ -19,13 +17,9 @@ public class RegistrationTests {
         Configuration.baseUrl = "https://demoqa.com";
     }
 
-    @AfterAll
-    static void afterAll() {
-        Configuration.holdBrowserOpen = true;
-    }
 
     @Test
-    void RegistrationTests() {
+    void Registration() {
 
 
         /// strings
@@ -62,7 +56,17 @@ public class RegistrationTests {
        // $("#uploadPicture").uploadFile(new File("src/test/resources/img/1.jpg"));
         $("#uploadPicture").uploadFromClasspath("img/1.jpg");
 
-        $("#stateCity-wrapper").$(byText("NSR")).click();
+        $("#state").click();
+        $("#stateCity-wrapper").$(byText("NCR")).click();
+        $("#city").click();
+        $("#stateCity-wrapper").$(byText("Delhi")).click();
+
+        $("#submit").click();
+
+        $(".modal-dialog").should(appear);
+        $("#example-modal-sizes-title-lg").shouldHave(text("Thanks for submitting the form"));
+        $(".table-responsive").shouldHave(text(firstName),text(currentAddress),text(userMail));
+
 
 
 
