@@ -1,3 +1,5 @@
+package tests;
+
 import com.codeborne.selenide.Configuration;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -31,6 +33,7 @@ public class RegistrationTests {
 
         ///open
         open("/automation-practice-form");
+        $(".practice-form-wrapper").shouldHave(text("Student Registration Form"));
         ///
         $("#firstName").setValue(firstName);
         $("#lastName").setValue(lastName);
