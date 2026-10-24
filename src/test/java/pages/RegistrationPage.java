@@ -14,6 +14,7 @@ public class RegistrationPage {
             userMailInput = $("# userMail"),
             userNumberInput = $("#userNumber"),
             currentAddressInput = $("#currentAddress");
+
     public RegistrationPage openPage() {
         open("/automation-practice-form");
         $(".practice-form-wrapper").shouldHave(text(TITLE_TEXT));
@@ -40,7 +41,8 @@ public class RegistrationPage {
         currentAddressInput.setValue(value);
         return this;
     }
-    public void setGender(String value) {
-
+    public RegistrationPage setGender() {
+        $("#gender-radio-1").click();
+        return this;
     }
 }

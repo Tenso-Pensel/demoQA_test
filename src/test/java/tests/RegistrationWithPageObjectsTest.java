@@ -36,7 +36,9 @@ public class RegistrationWithPageObjectsTest {
                 .setLastName(lastName)
                 .setEmailUser(userMail)
                 .setUserNumber(userNumber)
-                .setCurrentAddress(currentAddress);
+                .setCurrentAddress(currentAddress)
+                .setGender();
+
 
         $("#gender-radio-1").click();
 
