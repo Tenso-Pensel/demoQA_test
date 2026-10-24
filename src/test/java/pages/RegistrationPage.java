@@ -45,4 +45,10 @@ public class RegistrationPage {
         $("#gender-radio-1").click();
         return this;
     }
+    public RegistrationPage setAllHobbies() {
+        $("#hobbies-checkbox-3").click();
+        $("#hobbies-checkbox-1").click();
+        $("#hobbies-checkbox-2").click();
+        return this;
+    }
 }
