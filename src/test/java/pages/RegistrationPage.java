@@ -5,6 +5,7 @@ import pages.components.CalendarComponents;
 import pages.components.RegistrationResultModal;
 
 import static com.codeborne.selenide.Condition.text;
+import static com.codeborne.selenide.Selectors.byText;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.open;
 
@@ -13,12 +14,12 @@ public class RegistrationPage {
     private final String TITLE_TEXT = "Student Registration Form";
     RegistrationResultModal registrationResultModal = new RegistrationResultModal();
     private final SelenideElement
-            firstNameInput = $("#firstname"),
-            lastNameInput = $("#lastname"),
-            userMailInput = $("# userMail"),
+            firstNameInput = $("#firstName"),
+            lastNameInput = $("#lastName"),
+            userMailInput = $("#userEmail"),
             userNumberInput = $("#userNumber"),
-            currentAddressInput = $("#currentAddress"),
-            genderRationInput = $("#gender-radio-1");
+            currentAddressInput = $("#currentAddress");
+
 
     public RegistrationPage openPage() {
         open("/automation-practice-form");
@@ -47,7 +48,7 @@ public class RegistrationPage {
         return this;
     }
     public RegistrationPage setGender(String value) {
-        genderRationInput.click();
+        $(byText(value)).click();
         return this;
     }
     public RegistrationPage setAllHobbies() {

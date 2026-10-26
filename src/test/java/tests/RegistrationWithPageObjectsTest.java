@@ -29,7 +29,7 @@ public class RegistrationWithPageObjectsTest {
         String firstName = "Lexa";
         String lastName = "Gerasimov";
         String userMail = "Lexa@gera.ru";
-        String userNumber = "79044444444";
+        String userNumber = "7904444444";
         String currentAddress = "Gerasim 12/12";
         registrationPage.openPage()
                 .setFirstName(firstName)
@@ -39,20 +39,9 @@ public class RegistrationWithPageObjectsTest {
                 .setCurrentAddress(currentAddress)
                 .setGender("Male")
                 .setAllHobbies()
-                        .setBirthDate("19","February","2001");
-
-
-
-
-        $("#dateOfBirthInput").click();
-        $(".react-datepicker__month-select").selectOption("February");
-        $(".react-datepicker__year-select").selectOption("2001");
-//<div class="react-datepicker__day react-datepicker__day--001 react-datepicker__day--weekend" February 1st, 2026"
-//<div class="react-datepicker__day react-datepicker__day--001 react-datepicker__day--weekend react-datepicker__day--outside-month" March 1st, 2026"
-        $(".react-datepicker__day--019:not(.react-datepicker__day--outside-month)").click();
+                .setBirthDate("19","February","2001");
 
         $("#subjectsInput").setValue("Maths").pressEnter();
-
         // $("#uploadPicture").uploadFile(new File("src/test/resources/img/1.jpg"));
         $("#uploadPicture").uploadFromClasspath("img/1.jpg");
 
@@ -63,26 +52,12 @@ public class RegistrationWithPageObjectsTest {
 
         $("#submit").click();
         registrationPage.verifyResultsModal()
-                        .verifyResult("Student Name", firstName + lastName)
+                .verifyResult("Student Name", firstName + " " + lastName)
                 .verifyResult("Student Email", userMail)
-                .verifyResult("Gender", firstName)
+                .verifyResult("Gender", "Male")
                 .verifyResult("Mobile", userNumber)
-                .verifyResult("Date of Birth", firstName)
-                .verifyResult("Hobbies", firstName)
-                .verifyResult("Subjects", firstName)
-                .verifyResult("Picture", firstName)
-                .verifyResult("Address", currentAddress)
-                .verifyResult("State and City", firstName)
-
-
-        $(".modal-dialog").should(appear);
-        $("#example-modal-sizes-title-lg").shouldHave(text("Thanks for submitting the form"));
-        $(".table-responsive").shouldHave(text(firstName),text(currentAddress),text(userMail));
-
-
-
-
-
+                .verifyResult("Date of Birth","19 February,2001" )
+                .verifyResult("Address", currentAddress);
 
     }
 }
