@@ -14,16 +14,24 @@ public class RegistrationPage {
     private final String TITLE_TEXT = "Student Registration Form";
     RegistrationResultModal registrationResultModal = new RegistrationResultModal();
     private final SelenideElement
+            practiceFormWrapperInput = $(".practice-form-wrapper"),
             firstNameInput = $("#firstName"),
             lastNameInput = $("#lastName"),
             userMailInput = $("#userEmail"),
             userNumberInput = $("#userNumber"),
-            currentAddressInput = $("#currentAddress");
-
+            currentAddressInput = $("#currentAddress"),
+            hobbiesWrapperInput = $("#hobbiesWrapper"),
+            dateOfBirthInput = $("#dateOfBirthInput"),
+            subjectsInput =  $("#subjectsInput"),
+            pictureInput = $("#uploadPicture"),
+            stateCityInput =  $("#stateCity-wrapper"),
+            stateInput = $("#state"),
+            cityInput  = $("#city"),
+            submitInput = $("#submit");
 
     public RegistrationPage openPage() {
         open("/automation-practice-form");
-        $(".practice-form-wrapper").shouldHave(text(TITLE_TEXT));
+        practiceFormWrapperInput.shouldHave(text(TITLE_TEXT));
         return this;
     }
 
@@ -51,14 +59,14 @@ public class RegistrationPage {
         $(byText(value)).click();
         return this;
     }
-    public RegistrationPage setAllHobbies() {
-        $("#hobbies-checkbox-3").click();
-        $("#hobbies-checkbox-1").click();
-        $("#hobbies-checkbox-2").click();
+    public RegistrationPage setAllHobbies(String... values) {
+        for (String value : values) {
+            hobbiesWrapperInput.$(byText(value)).click();
+        }
         return this;
     }
     public RegistrationPage setBirthDate(String day, String month, String year) {
-        $("#dateOfBirthInput").click();
+        dateOfBirthInput.click();
         calendarComponents.setDate(day, month, year);
         return this;
     }
@@ -69,5 +77,24 @@ public class RegistrationPage {
     public RegistrationPage verifyResult(String key,String value) {
         registrationResultModal.verifyResult(key,value);
         return this;
+    }
+    public RegistrationPage setSubjectInput(String value) {
+        subjectsInput.setValue(value).pressEnter();
+        return this;
+    }
+    public RegistrationPage setUploadPicture() {
+        pictureInput.uploadFromClasspath("img/1.jpg");
+        return this;
+    }
+    public RegistrationPage setState(String state, String city) {
+        stateInput.click();
+        stateCityInput.$(byText(state)).click();
+        cityInput.click();
+        stateCityInput.$(byText(city)).click();
+        return this;
+
+    }
+    public void setSubmit () {
+        submitInput.click();
     }
 }
