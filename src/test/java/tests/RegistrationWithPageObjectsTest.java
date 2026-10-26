@@ -37,17 +37,12 @@ public class RegistrationWithPageObjectsTest {
                 .setEmailUser(userMail)
                 .setUserNumber(userNumber)
                 .setCurrentAddress(currentAddress)
-                .setGender()
-                .setAllHobbies();
+                .setGender("Male")
+                .setAllHobbies()
+                        .setBirthDate("19","February","2001");
 
 
 
-
-        $("#gender-radio-1").click();
-
-        $("#hobbies-checkbox-3").click();
-        $("#hobbies-checkbox-2").click();
-        $("#hobbies-checkbox-1").click();
 
         $("#dateOfBirthInput").click();
         $(".react-datepicker__month-select").selectOption("February");
@@ -67,6 +62,18 @@ public class RegistrationWithPageObjectsTest {
         $("#stateCity-wrapper").$(byText("Delhi")).click();
 
         $("#submit").click();
+        registrationPage.verifyResultsModal()
+                        .verifyResult("Student Name", firstName + lastName)
+                .verifyResult("Student Email", userMail)
+                .verifyResult("Gender", firstName)
+                .verifyResult("Mobile", userNumber)
+                .verifyResult("Date of Birth", firstName)
+                .verifyResult("Hobbies", firstName)
+                .verifyResult("Subjects", firstName)
+                .verifyResult("Picture", firstName)
+                .verifyResult("Address", currentAddress)
+                .verifyResult("State and City", firstName)
+
 
         $(".modal-dialog").should(appear);
         $("#example-modal-sizes-title-lg").shouldHave(text("Thanks for submitting the form"));
