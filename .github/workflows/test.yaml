@@ -62,7 +62,7 @@ jobs:
 
       - name: Generate Allure Report
         if: always()
-        run: gradle allureReport --no-daemon
+        run: gradle allureReport --no-daemon -Dselenide.remote=http://localhost:4444/wd/hub
 
       - name: Deploy Allure Report to GitHub Pages
         if: always() && hashFiles('build/reports/allure-report/allureReport/index.html') != ''

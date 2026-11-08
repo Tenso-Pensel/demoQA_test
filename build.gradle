@@ -23,10 +23,12 @@ tasks.withType(JavaCompile).configureEach {
 }
 allure {
     version = "2.29.0" // Версия генератора отчетов Allure
-
 }
+def selenideRemote = System.getProperty('selenide.remote')
 test {
     useJUnitPlatform()
-
+    if (selenideRemote != null) {
+        systemProperty 'selenide.remote', selenideRemote
+    }
     outputs.upToDateWhen { false }
 }
