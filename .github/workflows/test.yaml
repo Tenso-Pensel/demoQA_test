@@ -54,7 +54,8 @@ jobs:
             mkdir -p build/allure-results/history
             cp -R gh-pages-branch/history/. build/allure-results/history/
           fi
-
+      - name: Start Selenoid
+        uses: Xotabu4/selenoid-github-action@v2
       - name: Run tests
         id: tests
         continue-on-error: true
