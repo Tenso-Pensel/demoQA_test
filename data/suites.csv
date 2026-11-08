@@ -1,0 +1,8 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"broken","Sun Nov 08 10:41:02 UTC 2026","Sun Nov 08 10:41:03 UTC 2026","212","","tests.RegistrationWithPageObjectsTest","","tests.RegistrationWithPageObjectsTest","succesfullRegistration","succesfullRegistration()",""
+"broken","Sun Nov 08 10:41:02 UTC 2026","Sun Nov 08 10:41:02 UTC 2026","477","","tests.RegistrationTestsWithData","","tests.RegistrationTestsWithData","Registration","Registration()",""
+"broken","Sun Nov 08 10:41:03 UTC 2026","Sun Nov 08 10:41:03 UTC 2026","200","","tests.RegistrationWithPageObjectsTestFaker","","tests.RegistrationWithPageObjectsTestFaker","failedRegistration","failedRegistration()",""
+"broken","Sun Nov 08 10:41:03 UTC 2026","Sun Nov 08 10:41:04 UTC 2026","197","","tests.RegistrationWithPageObjectsTestFakerStep","","tests.RegistrationWithPageObjectsTestFakerStep","succesfullRegistration","succesfullRegistration()",""
+"broken","Sun Nov 08 10:40:54 UTC 2026","Sun Nov 08 10:41:02 UTC 2026","7268","","tests.RegistrationTests","","tests.RegistrationTests","Registration","Registration()",""
+"broken","Sun Nov 08 10:41:04 UTC 2026","Sun Nov 08 10:41:04 UTC 2026","194","","tests.RegistrationWithPageObjectsTestFakerStep","","tests.RegistrationWithPageObjectsTestFakerStep","failedRegistration","failedRegistration()",""
+"broken","Sun Nov 08 10:41:03 UTC 2026","Sun Nov 08 10:41:03 UTC 2026","500","","tests.RegistrationWithPageObjectsTestFaker","","tests.RegistrationWithPageObjectsTestFaker","succesfullRegistration","succesfullRegistration()",""
