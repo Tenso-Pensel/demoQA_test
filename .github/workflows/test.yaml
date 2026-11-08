@@ -1,72 +1,104 @@
+# Название workflow, которое будет отображаться во вкладке Actions
 name: UI Tests & Allure Report
 
+# События, при которых GitHub запускает workflow
 on:
+
+  # Запускать при отправке изменений в main или master
   push:
     branches: [main, master]
+
+  # Запускать при создании или обновлении pull request в main или master
   pull_request:
     branches: [main, master]
+
+  # Разрешить запуск вручную из вкладки Actions
   workflow_dispatch:
 
+# Разрешить workflow обновлять содержимое репозитория,
+# в частности публиковать отчёт в ветку gh-pages
 permissions:
   contents: write
 
 jobs:
+  # Имя задания; его будет видно в результатах запуска
   test:
+    # GitHub создаёт временную виртуальную машину Ubuntu для этого задания
     runs-on: ubuntu-latest
 
     steps:
+      # Получить файлы репозитория на виртуальную машину
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      # Установить Java 17 для Gradle и тестов
       - name: Set up JDK 17
         uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
 
+      # В этом проекте официальный сервер Gradle возвращал runner'у HTTP 504.
+      # Поэтому скачиваем архив с зеркала, проверяем его SHA-256 и распаковываем.
       - name: Download and install Gradle 9.6.0
         run: |
           set -euo pipefail
 
+          # Куда сохранить архив и куда Gradle распакуется
           GRADLE_ZIP="$RUNNER_TEMP/gradle-9.6.0-bin.zip"
           GRADLE_DIR="$RUNNER_TEMP/gradle-9.6.0"
 
+          # Скачать бинарный архив Gradle 9.6.0 с зеркала
           curl --fail --location --retry 3 --retry-delay 2 \
             "https://mirrors.huaweicloud.com/gradle/gradle-9.6.0-bin.zip" \
             --output "$GRADLE_ZIP"
 
+          # Проверить, что архив совпадает с официальной контрольной суммой
           echo "bbaeb2fef8710818cf0e261201dab964c572f92b942812df0c3620d62a529a01  $GRADLE_ZIP" \
             | sha256sum --check
 
+          # Распаковать Gradle во временную папку runner'а
           unzip -q "$GRADLE_ZIP" -d "$RUNNER_TEMP"
+
+          # Добавить Gradle в PATH для следующих шагов workflow
           echo "$GRADLE_DIR/bin" >> "$GITHUB_PATH"
 
+      # Убедиться, что Gradle доступен и запускается
       - name: Check Gradle installation
         run: gradle --version
 
+      # Попробовать скачать историю прошлых отчётов.
+      # При первом запуске ветки gh-pages ещё может не быть, поэтому ошибка допускается.
       - name: Download Allure history from gh-pages
         continue-on-error: true
         run: |
           git clone --depth 1 --single-branch --branch gh-pages \
             "https://github.com/${GITHUB_REPOSITORY}.git" gh-pages-branch || true
 
+          # Если история существует, скопировать её к результатам текущих тестов
           if [ -d "gh-pages-branch/history" ]; then
             mkdir -p build/allure-results/history
             cp -R gh-pages-branch/history/. build/allure-results/history/
           fi
 
+      # Запустить Selenoid — удалённый браузер, в котором выполняются UI-тесты
       - name: Start Selenoid
         uses: Xotabu4/selenoid-github-action@v2
 
+      # Запустить все тесты Gradle.
+      # continue-on-error позволяет перейти к созданию и публикации отчёта,
+      # даже если один или несколько тестов упали.
       - name: Run tests
         id: tests
         continue-on-error: true
         run: gradle test --no-daemon -Dselenide.remote=http://localhost:4444/wd/hub
 
+      # Создать HTML-отчёт Allure, даже если тесты завершились с ошибкой
       - name: Generate Allure Report
         if: always()
         run: gradle allureReport --no-daemon
 
+      # Опубликовать отчёт, только если файл index.html действительно создан
       - name: Deploy Allure Report to GitHub Pages
         if: always() && hashFiles('build/reports/allure-report/allureReport/index.html') != ''
         uses: peaceiris/actions-gh-pages@v4
@@ -75,6 +107,8 @@ jobs:
           publish_dir: ./build/reports/allure-report/allureReport
           publish_branch: gh-pages
 
+      # Вернуть запуску красный статус, если тесты упали.
+      # Отчёт к этому моменту уже успел сгенерироваться и опубликоваться.
       - name: Fail workflow if tests failed
         if: steps.tests.outcome == 'failure'
         run: exit 1
