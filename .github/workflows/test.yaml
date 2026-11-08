@@ -24,8 +24,25 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+      - name: Download and install Gradle 9.6.0
+        run: |
+          set -euo pipefail
+
+          GRADLE_ZIP="$RUNNER_TEMP/gradle-9.6.0-bin.zip"
+          GRADLE_DIR="$RUNNER_TEMP/gradle-9.6.0"
+
+          curl --fail --location --retry 3 --retry-delay 2 \
+            "https://mirrors.huaweicloud.com/gradle/gradle-9.6.0-bin.zip" \
+            --output "$GRADLE_ZIP"
+
+          echo "bbaeb2fef8710818cf0e261201dab964c572f92b942812df0c3620d62a529a01  $GRADLE_ZIP" \
+            | sha256sum --check
+
+          unzip -q "$GRADLE_ZIP" -d "$RUNNER_TEMP"
+          echo "$GRADLE_DIR/bin" >> "$GITHUB_PATH"
+
+      - name: Check Gradle installation
+        run: gradle --version
 
       - name: Download Allure history from gh-pages
         continue-on-error: true
@@ -41,11 +58,11 @@ jobs:
       - name: Run tests
         id: tests
         continue-on-error: true
-        run: ./gradlew test --no-daemon
+        run: gradle test --no-daemon
 
       - name: Generate Allure Report
         if: always()
-        run: ./gradlew allureReport --no-daemon
+        run: gradle allureReport --no-daemon
 
       - name: Deploy Allure Report to GitHub Pages
         if: always() && hashFiles('build/reports/allure-report/allureReport/index.html') != ''
