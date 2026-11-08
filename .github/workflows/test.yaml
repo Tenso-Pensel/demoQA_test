@@ -23,9 +23,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'gradle'
+      # Официальный экшен кеширования Gradle (тот самый со скриншота!)
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-
       # Подтягиваем историю прошлых билдов для графиков трендов Allure
       - name: Download Allure history from gh-pages
         continue-on-error: true
