@@ -1,23 +1,11 @@
 package tests;
 
-import com.codeborne.selenide.Configuration;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import pages.RegistrationPage;
+import pages.RegistrationPageStep;
 
 
-
-public class RegistrationWithPageObjectsTest {
-    RegistrationPage registrationPage = new RegistrationPage();
-    @BeforeAll
-    static void beforeall() {
-        Configuration.holdBrowserOpen = true;
-        Configuration.browserSize = "1920x1080";
-        // Configuration.startMaximized = true;
-        Configuration.baseUrl = "https://demoqa.com";
-    }
-
-
+public class RegistrationWithPageObjectsTest extends TestBase{
+    RegistrationPageStep registrationPageStep = new RegistrationPageStep();
     @Test
     void succesfullRegistration() {
 
@@ -27,7 +15,7 @@ public class RegistrationWithPageObjectsTest {
         String userMail = "Lexa@gera.ru";
         String userNumber = "7904444444";
         String currentAddress = "Gerasim 12/12";
-        registrationPage.openPage()
+        registrationPageStep.openPage()
                 .setFirstName(firstName)
                 .setLastName(lastName)
                 .setEmailUser(userMail)
@@ -40,7 +28,7 @@ public class RegistrationWithPageObjectsTest {
                 .setUploadPicture()
                 .setState("NCR","Delhi")
                 .setSubmit();
-        registrationPage.verifyResultsModal()
+        registrationPageStep.verifyResultsModal()
                 .verifyResult("Student Name", firstName + " " + lastName)
                 .verifyResult("Student Email", userMail)
                 .verifyResult("Gender", "Male")
