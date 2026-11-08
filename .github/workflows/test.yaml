@@ -2,56 +2,62 @@ name: UI Tests & Allure Report
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
     steps:
-      # Свежий чекаут с патчами безопасности:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      # Актуальный сетап Java (версии 1-4 задепрекейчены, используем v6):
       - name: Set up JDK 17
         uses: actions/setup-java@v6
         with:
+          distribution: temurin
           java-version: '17'
-          distribution: 'temurin'
-      # Официальный экшен кеширования Gradle (тот самый со скриншота!)
+
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-      # Подтягиваем историю прошлых билдов для графиков трендов Allure
+        run: chmod +x ./gradlew
+
       - name: Download Allure history from gh-pages
         continue-on-error: true
         run: |
-          git clone --single-branch --branch gh-pages https://github.com/${{ github.repository }} gh-pages-branch || true
+          git clone --depth 1 --single-branch --branch gh-pages \
+            "https://github.com/${GITHUB_REPOSITORY}.git" gh-pages-branch || true
+
           if [ -d "gh-pages-branch/history" ]; then
             mkdir -p build/allure-results/history
-            cp -r gh-pages-branch/history/* build/allure-results/history/ || true
+            cp -R gh-pages-branch/history/. build/allure-results/history/
           fi
 
-      # Прогоняем тесты (continue-on-error нужен, чтобы упавший ассерт не срубил сборку до генерации отчета)
       - name: Run tests
-        run: ./gradlew test
+        id: tests
         continue-on-error: true
+        run: ./gradlew test --no-daemon
 
-      # Собираем статичный HTML Allure Report
       - name: Generate Allure Report
-        run: ./gradlew allureReport
-
-      # Публикуем отчет в ветку gh-pages (GitHub Pages)
-      - name: Deploy Allure Report to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
         if: always()
+        run: ./gradlew allureReport --no-daemon
+
+      - name: Deploy Allure Report to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build/reports/allure-report
+          publish_dir: ./build/reports/allure-report/allureReport
           publish_branch: gh-pages
+
+      - name: Fail workflow if tests failed
+        if: steps.tests.outcome == 'failure'
+        run: exit 1
