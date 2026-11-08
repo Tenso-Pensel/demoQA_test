@@ -1,0 +1,71 @@
+package tests;
+
+import com.codeborne.selenide.Configuration;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import static com.codeborne.selenide.Condition.appear;
+import static com.codeborne.selenide.Condition.text;
+import static com.codeborne.selenide.Selectors.byText;
+import static com.codeborne.selenide.Selenide.$;
+import static com.codeborne.selenide.Selenide.open;
+
+public class RegistrationTestsWithData extends TestBase{
+
+    @Test
+    void Registration() {
+
+
+        /// strings
+        String firstName = "Lexa";
+        String lastName = "Gerasimov";
+        String userMail = "Lexa@gera.ru";
+        String userNumber = "79044444444";
+        String currentAddress = "Gerasim 12/12";
+
+        ///open
+        open("/automation-practice-form");
+        $(".practice-form-wrapper").shouldHave(text("Student Registration Form"));
+        ///
+        $("#firstName").setValue(firstName);
+        $("#lastName").setValue(lastName);
+        $("#userEmail").setValue(userMail);
+        $("#userNumber").setValue(userNumber);
+        $("#currentAddress").setValue(currentAddress);
+        $("#gender-radio-1").click();
+
+        $("#hobbies-checkbox-3").click();
+        $("#hobbies-checkbox-2").click();
+        $("#hobbies-checkbox-1").click();
+
+        $("#dateOfBirthInput").click();
+        $(".react-datepicker__month-select").selectOption("February");
+        $(".react-datepicker__month-select").selectOption("February");
+        $(".react-datepicker__year-select").selectOption("2001");
+//<div class="react-datepicker__day react-datepicker__day--001 react-datepicker__day--weekend" February 1st, 2026"
+//<div class="react-datepicker__day react-datepicker__day--001 react-datepicker__day--weekend react-datepicker__day--outside-month" March 1st, 2026"
+        $(".react-datepicker__day--019:not(.react-datepicker__day--outside-month)").click();
+
+        $("#subjectsInput").setValue("Maths").pressEnter();
+
+       // $("#uploadPicture").uploadFile(new File("src/test/resources/img/1.jpg"));
+        $("#uploadPicture").uploadFromClasspath("img/1.jpg");
+
+        $("#state").click();
+        $("#stateCity-wrapper").$(byText("NCR")).click();
+        $("#city").click();
+        $("#stateCity-wrapper").$(byText("Delhi")).click();
+
+        $("#submit").click();
+
+        $(".modal-dialog").should(appear);
+        $("#example-modal-sizes-title-lg").shouldHave(text("Thanks for submitting the form"));
+        $(".table-responsive").shouldHave(text(firstName),text(currentAddress),text(userMail));
+
+
+
+
+
+
+    }
+}
