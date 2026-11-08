@@ -3,14 +3,14 @@ name: UI Tests & Allure Report
 
 # События, при которых GitHub запускает workflow
 on:
-
-  # Запускать при отправке изменений в main или master
-  push:
-    branches: [main, master]
-
-  # Запускать при создании или обновлении pull request в main или master
-  pull_request:
-    branches: [main, master]
+#
+#  # Запускать при отправке изменений в main или master
+#  push:
+#    branches: [main, master]
+#
+#  # Запускать при создании или обновлении pull request в main или master
+#  pull_request:
+#    branches: [main, master]
 
   # Разрешить запуск вручную из вкладки Actions
   workflow_dispatch:
