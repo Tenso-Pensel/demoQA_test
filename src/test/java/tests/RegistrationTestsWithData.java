@@ -20,7 +20,7 @@ public class RegistrationTestsWithData extends TestBase{
         String firstName = "Lexa";
         String lastName = "Gerasimov";
         String userMail = "Lexa@gera.ru";
-        String userNumber = "7904444444";
+        String userNumber = "790444444";
         String currentAddress = "Gerasim 12/12";
 
         ///open
