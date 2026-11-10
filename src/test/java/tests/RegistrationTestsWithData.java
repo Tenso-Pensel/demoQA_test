@@ -1,5 +1,6 @@
 package tests;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static com.codeborne.selenide.Condition.appear;
@@ -8,6 +9,7 @@ import static com.codeborne.selenide.Selectors.byText;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.open;
 
+@Tag("simple")
 public class RegistrationTestsWithData extends TestBase{
 
     @Test
@@ -18,7 +20,7 @@ public class RegistrationTestsWithData extends TestBase{
         String firstName = "Lexa";
         String lastName = "Gerasimov";
         String userMail = "Lexa@gera.ru";
-        String userNumber = "79044444444";
+        String userNumber = "7904444444";
         String currentAddress = "Gerasim 12/12";
 
         ///open

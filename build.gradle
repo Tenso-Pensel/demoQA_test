@@ -32,3 +32,10 @@ test {
     }
     outputs.upToDateWhen { false }
 }
+tasks.register("simple_test", Test){
+    useJUnitPlatform{
+        includeTags("simple")
+    }
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+}
