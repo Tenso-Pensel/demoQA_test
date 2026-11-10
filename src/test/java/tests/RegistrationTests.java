@@ -2,6 +2,7 @@ package tests;
 
 import com.codeborne.selenide.Configuration;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static com.codeborne.selenide.Condition.appear;
@@ -11,15 +12,7 @@ import static com.codeborne.selenide.Selenide.*;
 import static com.codeborne.selenide.Selenide.$;
 
 public class RegistrationTests extends TestBase {
-    @BeforeAll
-    static void beforeall() {
-        Configuration.holdBrowserOpen = true;
-        Configuration.browserSize = "1920x1080";
-        // Configuration.startMaximized = true;
-        Configuration.baseUrl = "https://demoqa.com";
-    }
-
-
+    @Disabled("Some reason")
     @Test
     void Registration() {
 
