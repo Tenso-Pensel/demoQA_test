@@ -38,4 +38,7 @@ tasks.register("simple_test", Test){
     }
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
+    if (selenideRemote != null) {
+        systemProperty 'selenide.remote', selenideRemote
+    }
 }
