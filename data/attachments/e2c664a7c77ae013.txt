@@ -1,0 +1,1 @@
+[2026-11-13T17:33:09.432Z] [WARNING] https://securepubads.g.doubleclick.net/pagead/managed/js/gpt/m202611110201/pubads_impl.js?cb=122882263 22:124244 "[GPT] PubAdsService.setTargeting is deprecated, use googletag.setConfig({targeting: ...}) instead.\nhttps://goo.gle/gpt-message#170"
