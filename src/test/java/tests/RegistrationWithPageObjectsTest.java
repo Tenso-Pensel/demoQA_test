@@ -56,10 +56,6 @@ public class RegistrationWithPageObjectsTest extends TestBase {
 
     }
 
-
-
-
-
     @Tag("negative")
     @Test
     @Feature("Авторизация")
