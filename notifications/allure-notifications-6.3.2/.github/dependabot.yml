@@ -1,0 +1,8 @@
+version: 2
+updates:
+  # Gradle lives on legacy/java-* and release/5.1.* only. Master is the TS
+  # monorepo — Dependabot gradle PRs against / fail (no Gradle files).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

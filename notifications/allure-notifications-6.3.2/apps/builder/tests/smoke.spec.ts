@@ -1,0 +1,1152 @@
+import fs from 'node:fs';
+import { test, expect, bindSuiteMeta } from './coverage.fixture.js';
+
+bindSuiteMeta(test, {
+  feature: 'builder-ui',
+  story: 'Builder smoke',
+  layer: 'e2e',
+  component: 'builder',
+  severity: 'blocker',
+});
+
+/** SQ-1080 canon 4-tile — must match @qa-guru/allure-notifications-config DEFAULT_ITEMS + CANON.md */
+const SQ1080_ITEMS = [
+  { type: 'currentStatus', x: 0, y: 0, w: 4, h: 4 },
+  { type: 'durationDynamics', x: 4, y: 0, w: 6, h: 4 },
+  { type: 'testingPyramid', x: 0, y: 4, w: 3, h: 3 },
+  { type: 'durations', x: 3, y: 4, w: 4, h: 3, groupBy: 'layer' },
+];
+
+test.describe('allure-notifications-builder smoke', () => {
+  test('shell mounts: header, 3 zones, terminal JSON', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('anb-page')).toBeVisible();
+    await expect(page.getByTestId('anb-layout')).toBeVisible();
+    await expect(page.getByTestId('anb-zone-options')).toBeVisible();
+    await expect(page.getByTestId('anb-zone-preview')).toBeVisible();
+    await expect(page.getByTestId('anb-terminal')).toBeVisible();
+    await expect(page.locator('#app-header')).not.toBeEmpty();
+  });
+
+  test('desktop: three columns scroll independently', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') errors.push(`console:${msg.text()}`);
+    });
+    page.on('pageerror', (err) => errors.push(`pageerror:${err.message}`));
+
+    await page.setViewportSize({ width: 1280, height: 640 });
+    await page.goto('/');
+    await expect(page.getByTestId('anb-layout')).toBeVisible();
+    await expect(page.getByTestId('anb-canvas')).toBeVisible();
+    await expect(page.getByTestId('anb-terminal')).not.toBeEmpty();
+
+    const snap = await page.evaluate(() => {
+      const scrollport = (root, inner) => {
+        const nested = inner ? root.querySelector(inner) : null;
+        if (nested instanceof HTMLElement && nested.scrollHeight > nested.clientHeight + 1) {
+          return nested;
+        }
+        return root instanceof HTMLElement ? root : null;
+      };
+      const options = document.querySelector('[data-testid="anb-zone-options"]');
+      const preview = document.querySelector('[data-testid="anb-zone-preview"]');
+      const terminal = document.querySelector('[data-testid="anb-zone-terminal"]');
+      if (!options || !preview || !terminal) {
+        throw new Error('zones missing');
+      }
+      const ports = {
+        options: scrollport(options, null),
+        preview: scrollport(preview, '.panel__body'),
+        terminal: scrollport(terminal, '.panel__code'),
+      };
+      if (!ports.options || !ports.preview || !ports.terminal) {
+        throw new Error('scrollports missing');
+      }
+      const metric = (el) => ({
+        overflowX: getComputedStyle(el).overflowX,
+        overflowY: getComputedStyle(el).overflowY,
+        canScroll: el.scrollHeight > el.clientHeight + 1,
+        top: el.scrollTop,
+        gutter: el.offsetWidth - el.clientWidth,
+      });
+      const chartsPanel = document.querySelector('[data-testid="anb-layout-options"]');
+      const previewPanel = document.querySelector('[data-testid="anb-preview-panel"]');
+      const terminalPanel = document.querySelector('[data-testid="anb-terminal-panel"]');
+      const headerEl =
+        document.querySelector('#app-header .header') || document.querySelector('#app-header');
+      const headerBottom = headerEl?.getBoundingClientRect().bottom ?? 0;
+      const panelTop = (el) => (el instanceof HTMLElement ? el.getBoundingClientRect().top : 0);
+      const align = {
+        chartsTop: panelTop(chartsPanel),
+        previewTop: panelTop(previewPanel),
+        terminalTop: panelTop(terminalPanel),
+        gapBelowHeader: panelTop(chartsPanel) - headerBottom,
+      };
+      ports.options.scrollTop = 80;
+      ports.preview.scrollTop = 120;
+      const optionBodies = [...options.querySelectorAll('.panel__body')].map((el) =>
+        getComputedStyle(el).overflowY,
+      );
+      return {
+        bodyOverflow: getComputedStyle(document.body).overflowY,
+        pageScroll: document.documentElement.scrollTop,
+        options: metric(ports.options),
+        preview: metric(ports.preview),
+        terminal: metric(ports.terminal),
+        optionBodiesOverflowY: optionBodies,
+        ...align,
+      };
+    });
+
+    expect(snap.bodyOverflow).toBe('hidden');
+    expect(snap.pageScroll).toBe(0);
+    expect(snap.options.overflowX).not.toBe('hidden');
+    expect(snap.options.overflowX).not.toBe('clip');
+    expect(snap.preview.overflowX).not.toBe('hidden');
+    expect(snap.preview.overflowX).not.toBe('clip');
+    expect(snap.terminal.overflowX).not.toBe('hidden');
+    expect(snap.terminal.overflowX).not.toBe('clip');
+    expect(snap.options.gutter).toBeLessThan(12);
+    expect(snap.preview.gutter).toBeLessThan(12);
+    expect(snap.terminal.gutter).toBeLessThan(12);
+    expect(snap.optionBodiesOverflowY.every((v) => v === 'visible')).toBe(true);
+    expect(snap.options.canScroll).toBe(true);
+    expect(snap.preview.canScroll).toBe(true);
+    expect(snap.terminal.canScroll).toBe(true);
+    expect(snap.options.top).toBeGreaterThan(0);
+    expect(snap.preview.top).toBeGreaterThan(0);
+    expect(snap.terminal.top).toBe(0);
+    expect(Math.abs(snap.previewTop - snap.chartsTop)).toBeLessThan(2);
+    expect(Math.abs(snap.terminalTop - snap.chartsTop)).toBeLessThan(2);
+    expect(snap.gapBelowHeader).toBeGreaterThan(0);
+    expect(snap.gapBelowHeader).toBeLessThan(40);
+    expect(errors, errors.join('\n')).toEqual([]);
+  });
+
+  test('header tool links: monorepo + prod builder site', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('anb-page')).toBeVisible();
+    const github = page.getByTestId('header-github');
+    await expect(github).toHaveAttribute(
+      'href',
+      'https://github.com/qa-guru/allure-notifications',
+    );
+    await expect(github).toHaveAttribute('aria-label', 'allure-notifications');
+    const site = page.getByTestId('header-github-pages');
+    await expect(site).toHaveAttribute(
+      'href',
+      'https://allure-notifications.qa.guru',
+    );
+    await expect(site).toHaveAttribute('aria-label', 'allure-notifications');
+    // Template github.io icon (SVG currentColor) — never allure3-logo img override.
+    await expect(site.locator('.icon svg')).toBeVisible();
+    await expect(site.locator('.icon img')).toHaveCount(0);
+  });
+
+  test('Reset → CB-870 free chart + chrome defaults in terminal', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await page.getByTestId('anb-chart-header-height').fill('90');
+    await page.getByTestId('anb-chart-card-gap').fill('20');
+    await page.getByTestId('anb-chart-tile-pad').fill('10');
+    await page.getByTestId('anb-btn-reset').click();
+    await expect
+      .poll(async () => {
+        const raw = await page.getByTestId('anb-terminal').innerText();
+        return JSON.parse(raw).base.chart;
+      })
+      .toMatchObject({
+        mode: 'collage',
+        layout: 'free',
+        profile: 'default',
+        width: 870,
+        height: 1080,
+        headerHeight: 31,
+        cardGap: 14,
+        tilePad: 6,
+        gridCols: 10,
+        gridRows: 10,
+        pyramidFallback: 'suites',
+        items: SQ1080_ITEMS,
+      });
+  });
+
+  test('chrome knobs write numbers into terminal JSON', async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('anb-chart-header-height').fill('80');
+    await page.getByTestId('anb-chart-card-gap').fill('18');
+    await page.getByTestId('anb-chart-tile-pad').fill('8');
+    await expect
+      .poll(async () => {
+        const raw = await page.getByTestId('anb-terminal').innerText();
+        const chart = JSON.parse(raw).base.chart;
+        return {
+          headerHeight: chart.headerHeight,
+          cardGap: chart.cardGap,
+          tilePad: chart.tilePad,
+        };
+      })
+      .toEqual({ headerHeight: 80, cardGap: 18, tilePad: 8 });
+  });
+
+  test('canvas presets only 870 / 1080 / 1410', async ({ page }) => {
+    await page.goto('/');
+    const select = page.getByTestId('anb-canvas-preset');
+    const values = await select.locator('option').evaluateAll((opts) =>
+      opts.map((o) => /** @type {HTMLOptionElement} */ (o).value),
+    );
+    expect(values).toEqual(['870x1080', '1080x1080', '1410x1080']);
+  });
+
+  test('canvas preset updates editor aspect ratio', async ({ page }) => {
+    await page.goto('/');
+    const select = page.getByTestId('anb-canvas-preset');
+
+    /** @param {string} preset */
+    async function canvasRatio(preset) {
+      await select.selectOption(preset);
+      await page.waitForFunction(
+        (expected) => {
+          const el = document.getElementById('anb-canvas');
+          if (!el) return false;
+          const r = el.getBoundingClientRect();
+          if (!(r.width > 0 && r.height > 0)) return false;
+          const ratio = r.width / r.height;
+          return Math.abs(ratio - expected) < 0.02;
+        },
+        preset === '1080x1080' ? 1 : Number(preset.split('x')[0]) / Number(preset.split('x')[1]),
+      );
+      return page.evaluate(() => {
+        const r = document.getElementById('anb-canvas').getBoundingClientRect();
+        return r.width / r.height;
+      });
+    }
+
+    expect(await canvasRatio('1080x1080')).toBeCloseTo(1, 2);
+    expect(await canvasRatio('870x1080')).toBeCloseTo(870 / 1080, 2);
+    expect(await canvasRatio('1410x1080')).toBeCloseTo(1410 / 1080, 2);
+    await select.selectOption('870x1080');
+    expect(await canvasRatio('1410x1080')).toBeCloseTo(1410 / 1080, 2);
+  });
+
+  test('telegram messenger pane is live (no stub tabs)', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('anb-group-messengers')).toBeVisible();
+    await expect(page.getByText('Telegram · live')).toBeVisible();
+    await expect(page.getByTestId('anb-messenger-telegram')).toBeVisible();
+    await expect(page.getByTestId('anb-tab-telegram')).toHaveCount(0);
+    await expect(page.getByTestId('anb-stub-slack')).toHaveCount(0);
+  });
+
+  test('export preview links in preview bar; caption under canvas', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('anb-export-tg')).toBeVisible();
+    await expect(page.getByTestId('anb-export-full')).toBeVisible();
+    await expect(page.getByTestId('anb-tg-preview')).toHaveCount(0);
+    await page.getByTestId('anb-export-tg').hover();
+    await expect(page.getByTestId('anb-export-popover')).toBeVisible();
+    await page.locator('[data-anb-path="base.environment"]').fill('prod');
+    await page.locator('[data-anb-path="base.language"]').selectOption('ru');
+    await expect(page.getByTestId('anb-tg-text')).toContainText('Результаты');
+    await expect(page.getByTestId('anb-tg-text')).toContainText('prod');
+    await expect(page.getByTestId('anb-tg-text')).toContainText('Всего сценариев');
+    await expect(page.getByTestId('anb-tg-text')).toContainText('00:00:56.205');
+    await expect(page.getByTestId('anb-tg-text')).toContainText('TestOps');
+    await expect(page.getByTestId('anb-tg-text')).toContainText('Сборка');
+    await expect
+      .poll(async () =>
+        page.getByTestId('anb-tg-text').evaluate((el) => {
+          const cs = getComputedStyle(el);
+          return {
+            bg: cs.backgroundColor,
+            fits: el.scrollHeight <= el.clientHeight + 1,
+          };
+        }),
+      )
+      .toEqual({ bg: 'rgba(0, 0, 0, 0)', fits: true });
+  });
+
+  test('Full size export popover fits WD-1410 without CSS clip', async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 1200 });
+    await page.goto('/');
+    await page.locator('[data-anb-canvas]').selectOption('1410x1080');
+    await page.getByTestId('anb-export-full').hover();
+    const popover = page.getByTestId('anb-export-popover');
+    await expect(popover).toBeVisible();
+    await expect(popover.locator('#anb-export-popover-meta')).toHaveCount(0);
+    await expect(popover.locator('#anb-export-popover-viewport')).toHaveCount(0);
+    const fit = await page.evaluate(() => {
+      const pop = document.getElementById('anb-export-popover');
+      const stage = document.getElementById('anb-export-popover-stage');
+      if (!(pop instanceof HTMLElement) || !(stage instanceof HTMLElement)) {
+        return { ok: false, reason: 'missing nodes' };
+      }
+      const box = pop.getBoundingClientRect();
+      const scaleMatch = /scale\(([\d.]+)\)/.exec(stage.style.transform || '');
+      const scale = scaleMatch ? Number(scaleMatch[1]) : 1;
+      const logicalW = parseFloat(stage.style.width) || 0;
+      const logicalH = parseFloat(stage.style.height) || 0;
+      const expectedW = Math.round(logicalW * scale);
+      const expectedH = Math.round(logicalH * scale);
+      return {
+        ok:
+          logicalW === 1410 &&
+          logicalH === 1080 &&
+          Math.abs(box.width - expectedW) <= 2 &&
+          Math.abs(box.height - expectedH) <= 2,
+        logicalW,
+        logicalH,
+        scale,
+        boxW: box.width,
+        boxH: box.height,
+        expectedW,
+        expectedH,
+      };
+    });
+    expect(fit.ok, JSON.stringify(fit)).toBe(true);
+  });
+
+  test('Download config.json is jar-shaped', async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('anb-btn-reset').click();
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByTestId('anb-term-download').click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe('config.json');
+    const path = await download.path();
+    expect(path).toBeTruthy();
+    const cfg = JSON.parse(fs.readFileSync(path, 'utf8'));
+    expect(cfg.telegram).toBeTruthy();
+    expect(cfg.base.chart.layout).toBe('free');
+    expect(cfg.base.chart.profile).toBe('default');
+    expect(cfg.base.chart.items).toEqual(SQ1080_ITEMS);
+    expect(cfg.base.chart.width).toBe(870);
+    expect(cfg.base.chart.height).toBe(1080);
+    expect(cfg.base.chart.headerHeight).toBe(31);
+    expect(cfg.base.chart.cardGap).toBe(14);
+    expect(cfg.base.chart.tilePad).toBe(6);
+    expect(cfg.vector).toMatch(/^vector#[0-9a-f]{8}$/);
+  });
+
+  test('boolean seg toggles enableChart / darkMode into terminal + preview', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const enable = page.getByTestId('anb-bool-enableChart');
+    const dark = page.getByTestId('anb-bool-darkMode');
+    const terminal = page.getByTestId('anb-terminal');
+    const canvas = page.getByTestId('anb-canvas');
+    const previewPanel = page.getByTestId('anb-preview-panel');
+    const optionsPanel = page.getByTestId('anb-options');
+    const termPanel = page.getByTestId('anb-terminal-panel');
+
+    await expect(canvas).toHaveAttribute('data-anb-dark', 'true');
+    await expect(previewPanel).toHaveAttribute('data-anb-dark', 'true');
+    await expect(canvas).not.toHaveClass(/anb-canvas--chart-off/);
+
+    const optionsBgBefore = await optionsPanel.evaluate(
+      (el) => getComputedStyle(el).backgroundColor,
+    );
+    const termBgBefore = await termPanel.evaluate(
+      (el) => getComputedStyle(el).backgroundColor,
+    );
+
+    await dark.locator('.plaque-field-seg__btn[data-value="false"]').click();
+    await expect(dark.locator('.plaque-field-seg__btn--on')).toHaveAttribute(
+      'data-value',
+      'false',
+    );
+    await expect(terminal).toContainText('"darkMode": false');
+    await expect(canvas).toHaveAttribute('data-anb-dark', 'false');
+    await expect(previewPanel).toHaveAttribute('data-anb-dark', 'false');
+    // Config darkMode → preview panel only; Options / terminal stay put.
+    await expect(optionsPanel).toHaveCSS('background-color', optionsBgBefore);
+    await expect(termPanel).toHaveCSS('background-color', termBgBefore);
+    await expect(page.locator('html')).not.toHaveClass(/theme-light/);
+    // Entire grid panel (header + outer + card + chart body + caption).
+    await expect(previewPanel).toHaveCSS('background-color', 'rgb(238, 240, 243)');
+    await expect(canvas).toHaveCSS('background-color', 'rgb(232, 234, 238)');
+    const card = page.locator('#anb-grid .grid-stack-item-content').first();
+    const chartBody = page.locator('#anb-grid .widget-tile__body').first();
+    const caption = page.getByTestId('anb-tg-text');
+    await expect(card).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+    await expect(chartBody).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+    await expect(caption).toHaveCSS('color', 'rgb(26, 26, 26)');
+
+    await dark.locator('.plaque-field-seg__btn[data-value="true"]').click();
+    await expect(canvas).toHaveAttribute('data-anb-dark', 'true');
+    await expect(previewPanel).toHaveAttribute('data-anb-dark', 'true');
+    await expect(canvas).toHaveCSS('background-color', 'rgb(14, 13, 12)');
+    await expect(card).toHaveCSS('background-color', 'rgb(50, 50, 50)');
+    await expect(chartBody).toHaveCSS('background-color', 'rgb(50, 50, 50)');
+    await expect(caption).toHaveCSS('color', 'rgb(220, 220, 220)');
+    await expect(optionsPanel).toHaveCSS('background-color', optionsBgBefore);
+    await expect(termPanel).toHaveCSS('background-color', termBgBefore);
+
+    // Header moon → entire page including collage (syncs base.darkMode).
+    await page.locator('[data-testid="header-theme-toggle"]').click();
+    await expect(page.locator('html')).toHaveClass(/theme-light/);
+    await expect(dark.locator('.plaque-field-seg__btn--on')).toHaveAttribute(
+      'data-value',
+      'false',
+    );
+    await expect(terminal).toContainText('"darkMode": false');
+    await expect(canvas).toHaveAttribute('data-anb-dark', 'false');
+    await expect(canvas).toHaveCSS('background-color', 'rgb(232, 234, 238)');
+    await expect(termPanel).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+
+    await enable.locator('.plaque-field-seg__btn[data-value="false"]').click();
+    await expect(enable.locator('.plaque-field-seg__btn--on')).toHaveAttribute(
+      'data-value',
+      'false',
+    );
+    await expect(terminal).toContainText('"enableChart": false');
+    await expect(canvas).toHaveClass(/anb-canvas--chart-off/);
+
+    await enable.locator('.plaque-field-seg__btn[data-value="true"]').click();
+    await expect(canvas).not.toHaveClass(/anb-canvas--chart-off/);
+    await expect(terminal).toContainText('"enableChart": true');
+  });
+
+  test('vector# fingerprint in bar; actions Reset → Download → Copy', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const vector = page.getByTestId('anb-term-vector');
+    await expect(vector).toBeVisible();
+    await expect(vector).toHaveValue(/^vector#[0-9a-f]{8}$/);
+    const actions = page.locator('.anb-term-actions .panel__action');
+    await expect(actions).toHaveCount(3);
+    await expect(actions.nth(0)).toHaveAttribute('data-testid', 'anb-term-reset');
+    await expect(actions.nth(1)).toHaveAttribute('data-testid', 'anb-term-download');
+    await expect(actions.nth(2)).toHaveAttribute('data-testid', 'anb-term-copy');
+  });
+
+  test('palette: 5-up grid, caption = chart title (not 2×2)', async ({ page }) => {
+    await page.goto('/');
+    const palette = page.getByTestId('anb-palette');
+    await expect(palette).toBeVisible();
+    const items = palette.locator('.anb-palette__item');
+    await expect(items).toHaveCount(17);
+    const snap = await palette.evaluate((el) => {
+      const kids = [...el.querySelectorAll('.anb-palette__item')];
+      const y0 = kids[0]?.offsetTop ?? 0;
+      const cols = kids.filter((k) => k.offsetTop === y0).length;
+      const hints = kids.map((k) => k.querySelector('.anb-palette__hint')?.textContent?.trim() || '');
+      const barTitles = kids.flatMap((k) =>
+        [...k.querySelectorAll('.widget-tile__title')].map((t) => t.textContent.trim()),
+      );
+      return {
+        cols,
+        hints,
+        barTitles,
+        has2x2: hints.some((h) => /^2[×x]2$/i.test(h)),
+      };
+    });
+    expect(snap.cols).toBe(5);
+    expect(snap.has2x2).toBe(false);
+    expect(snap.barTitles).toEqual([]);
+    expect(snap.hints[0]).toBe('Current status');
+    expect(snap.hints[1]).toBe('Testing pyramid');
+  });
+
+  test('resize handles sit in gutter outside card (not under title bar)', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await page.getByTestId('anb-btn-reset').click();
+    const item = page.locator('#anb-grid .grid-stack-item').first();
+    await expect(item).toBeVisible();
+    const pos = await item.evaluate((el) => {
+      const card = el.querySelector('.grid-stack-item-content');
+      const bar = el.querySelector('.anb-panel__bar, .widget-tile__header, .widget-tile__bar');
+      const nw = el.querySelector('.ui-resizable-nw');
+      const ne = el.querySelector('.ui-resizable-ne');
+      const sw = el.querySelector('.ui-resizable-sw');
+      if (!card || !nw || !ne || !sw) {
+        return { ok: false, reason: 'missing handles' };
+      }
+      const c = card.getBoundingClientRect();
+      const nwR = nw.getBoundingClientRect();
+      const neR = ne.getBoundingClientRect();
+      const swR = sw.getBoundingClientRect();
+      const barBottom = bar ? bar.getBoundingClientRect().bottom : c.top + 31;
+      const cs = getComputedStyle(el.closest('.anb-canvas'));
+      const halfGap = parseFloat(cs.getPropertyValue('--anb-card-gap')) / 2;
+      const radius = parseFloat(getComputedStyle(card).borderRadius);
+      const handleOpacity = parseFloat(getComputedStyle(nw).opacity);
+      return {
+        ok: true,
+        halfGap,
+        radius,
+        handleOpacity,
+        // Handle box at cell edge → outside card by ~half-gap.
+        dNwTop: nwR.top - c.top,
+        dNeTop: neR.top - c.top,
+        dNwLeft: nwR.left - c.left,
+        dSwBottom: c.bottom - swR.bottom,
+        nwBelowBar: nwR.top >= barBottom - 1,
+      };
+    });
+    expect(pos.ok, JSON.stringify(pos)).toBe(true);
+    expect(pos.halfGap).toBeGreaterThan(0);
+    expect(pos.handleOpacity).toBe(0);
+    // Outside card (negative offset ≈ half-gap), not flush on the chart.
+    expect(pos.dNwTop).toBeLessThan(-2);
+    expect(pos.dNeTop).toBeLessThan(-2);
+    expect(pos.dNwLeft).toBeLessThan(-2);
+    expect(pos.dSwBottom).toBeLessThan(-2);
+    expect(Math.abs(pos.dNwTop + pos.halfGap)).toBeLessThan(2);
+    expect(Math.abs(pos.dNeTop + pos.halfGap)).toBeLessThan(2);
+    expect(pos.radius).toBeGreaterThanOrEqual(5);
+    expect(pos.radius).toBeLessThanOrEqual(10);
+    // Regression: merge once parked NE/NW under the title bar.
+    expect(pos.nwBelowBar).toBe(false);
+  });
+
+  test('editor chrome scales cardGap with canvas display width', async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('anb-btn-reset').click();
+    const snap = await page.evaluate(() => {
+      const A = globalThis.__ANB__;
+      const canvas = document.getElementById('anb-canvas');
+      if (!(canvas instanceof HTMLElement)) return { ok: false };
+      A.syncEditorChrome();
+      const displayW = canvas.getBoundingClientRect().width;
+      const logicalW = Number(
+        getComputedStyle(canvas).getPropertyValue('--anb-canvas-w') || 870,
+      );
+      const scale = displayW / logicalW;
+      const gapCss = parseFloat(getComputedStyle(canvas).getPropertyValue('--anb-card-gap'));
+      const barCss = parseFloat(getComputedStyle(canvas).getPropertyValue('--anb-bar-h'));
+      const padCss = parseFloat(getComputedStyle(canvas).getPropertyValue('--wt-pad'));
+      const item = { type: 'currentStatus', x: 0, y: 0, w: 4, h: 4 };
+      const panel = A.panelInnerHtml(item);
+      const preview = A.previewItemHtml(item);
+      return {
+        ok: true,
+        scale,
+        gapCss,
+        barCss,
+        padCss,
+        gapExpected: 14 * scale,
+        barExpected: 31 * scale,
+        padExpected: 6 * scale,
+        panelTier: (panel.match(/widget-tile--tier-(\w+)/) || [])[1],
+        previewTier: (preview.match(/widget-tile--tier-(\w+)/) || [])[1],
+        panelHasDotsBar: /widget-tile__bar/.test(panel) && !/anb-panel__bar/.test(panel),
+        panelHasEditorBar: /anb-panel__bar/.test(panel),
+        previewHasProductBar: /widget-tile__bar/.test(preview),
+      };
+    });
+    expect(snap.ok).toBe(true);
+    expect(snap.scale).toBeGreaterThan(0);
+    expect(Math.abs(snap.gapCss - snap.gapExpected)).toBeLessThan(0.75);
+    expect(Math.abs(snap.barCss - snap.barExpected)).toBeLessThan(0.75);
+    expect(Math.abs(snap.padCss - snap.padExpected)).toBeLessThan(0.75);
+    expect(snap.panelTier).toBe(snap.previewTier);
+    expect(snap.panelHasEditorBar).toBe(true);
+    expect(snap.panelHasDotsBar).toBe(false);
+    expect(snap.previewHasProductBar).toBe(true);
+  });
+
+  test('chart.profile default paints stock Allure mocks; kit restores WidgetTileMocks', async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') errors.push(msg.text());
+    });
+    page.on('pageerror', (err) => {
+      errors.push(err.message);
+    });
+
+    await page.goto('/');
+    await page.getByTestId('anb-btn-reset').click();
+    await expect(page.locator('#anb-canvas')).toHaveAttribute('data-anb-chart-profile', 'default');
+
+    const stock = await page.evaluate(() => {
+      const canvas = document.getElementById('anb-canvas');
+      const palette = document.getElementById('anb-palette');
+      const attr = (chart: string) =>
+        canvas
+          ?.querySelector(`.widget-tile[data-chart="${chart}"] svg`)
+          ?.getAttribute('data-anb-stock') ?? null;
+      const palDots = [...(palette?.querySelectorAll('.widget-tile__bar .indicator-row') ?? [])].filter(
+        (el) => {
+          const bar = el.closest('.widget-tile__bar');
+          if (!(bar instanceof HTMLElement) || !(el instanceof HTMLElement)) return false;
+          return getComputedStyle(bar).display !== 'none' && getComputedStyle(el).display !== 'none';
+        },
+      ).length;
+      return {
+        pyramid: attr('testingPyramid'),
+        dynamics: attr('durationDynamics'),
+        durations: attr('durations'),
+        palDots,
+      };
+    });
+    expect(stock.pyramid).toBe('testingPyramid');
+    expect(stock.dynamics).toBe('durationDynamics');
+    expect(stock.durations).toBe('durations');
+    expect(stock.palDots).toBe(0);
+
+    await page.getByTestId('anb-chart-profile').selectOption('kit');
+    await expect(page.locator('#anb-canvas')).toHaveAttribute('data-anb-chart-profile', 'kit');
+    const kit = await page.evaluate(() => {
+      const canvas = document.getElementById('anb-canvas');
+      return canvas
+        ?.querySelector('.widget-tile[data-chart="testingPyramid"] svg')
+        ?.getAttribute('data-anb-stock');
+    });
+    expect(kit).toBeNull();
+    expect(errors, errors.join('\n')).toEqual([]);
+  });
+
+  test('chart.profile kit shows kit palette slots; export includes profile + kit ids', async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') errors.push(msg.text());
+    });
+    page.on('pageerror', (err) => {
+      errors.push(err.message);
+    });
+
+    await page.goto('/');
+    const palette = page.getByTestId('anb-palette');
+    await expect(palette.locator('.anb-palette__item')).toHaveCount(17);
+    await expect(page.getByTestId('anb-palette-allureQualityGate')).toHaveCount(0);
+    await expect(page.getByTestId('anb-palette-sonarQualityGate')).toHaveCount(0);
+    await expect(page.getByTestId('anb-palette-testsTable')).toHaveCount(0);
+    await expect(page.getByTestId('anb-palette-kit-note')).toBeVisible();
+
+    await page.getByTestId('anb-chart-profile').selectOption('kit');
+    await expect(palette.locator('.anb-palette__item')).toHaveCount(20);
+    await expect(page.getByTestId('anb-palette-kit-note')).toHaveCount(0);
+    await expect(page.getByTestId('anb-palette-allureQualityGate')).toBeVisible();
+    await expect(page.getByTestId('anb-palette-sonarQualityGate')).toBeVisible();
+    await expect(page.getByTestId('anb-palette-testsTable')).toBeVisible();
+
+    const kitMocks = await palette.evaluate(() => {
+      const ids = ['allureQualityGate', 'sonarQualityGate', 'testsTable'] as const;
+      return Object.fromEntries(
+        ids.map((id) => {
+          const btn = document.querySelector(`[data-testid="anb-palette-${id}"]`);
+          const body = btn?.querySelector('.widget-tile__body');
+          const mock = body?.querySelector('[data-testid^="anb-kit-mock-"]');
+          const barDots = btn?.querySelectorAll('.widget-tile__bar .indicator').length ?? 0;
+          const qgDots = btn?.querySelectorAll('.quality-gate__bar .indicator').length ?? 0;
+          const qgRuleCount = mock?.querySelectorAll('.quality-gate__rule').length ?? 0;
+          const hasVerdict = Boolean(mock?.querySelector('.quality-gate__verdict'));
+          return [
+            id,
+            {
+              bodyChildCount: body?.childElementCount ?? 0,
+              mockTestId: mock?.getAttribute('data-testid') ?? '',
+              mockClass: mock?.className ?? '',
+              barDots,
+              qgDots,
+              qgRuleCount,
+              hasVerdict,
+              hasTable: Boolean(mock?.querySelector('.tests-table-panel__table tbody tr')),
+              tableRowCount: mock?.querySelectorAll('.tests-table-panel__table tbody tr').length ?? 0,
+              tableColCount: mock?.querySelector('.tests-table-panel__table tbody tr')?.children.length ?? 0,
+              hasTrend: Boolean(mock?.querySelector('.tests-table-panel__trend .sparkline')),
+              hasStability: Boolean(mock?.querySelector('.tests-table-panel__stability .stability-dots')),
+              hasQgRules: Boolean(mock?.querySelector('.quality-gate__rules')),
+            },
+          ];
+        }),
+      );
+    });
+    for (const id of ['allureQualityGate', 'sonarQualityGate', 'testsTable'] as const) {
+      const snap = kitMocks[id];
+      expect(snap.bodyChildCount, `${id} palette body`).toBeGreaterThan(0);
+      expect(snap.mockTestId).toBe(`anb-kit-mock-${id}`);
+    }
+    expect(kitMocks.allureQualityGate.mockClass).toContain('quality-gate--allure');
+    expect(kitMocks.allureQualityGate.mockClass).toContain('quality-gate--passed');
+    expect(kitMocks.sonarQualityGate.mockClass).toContain('quality-gate--sonar');
+    expect(kitMocks.sonarQualityGate.mockClass).toContain('quality-gate--failed');
+    expect(kitMocks.testsTable.mockClass).toContain('tests-table-panel');
+    expect(kitMocks.allureQualityGate.mockClass).not.toBe(kitMocks.sonarQualityGate.mockClass);
+    expect(kitMocks.allureQualityGate.barDots).toBeGreaterThan(0);
+    expect(kitMocks.sonarQualityGate.barDots).toBeGreaterThan(0);
+    expect(kitMocks.allureQualityGate.hasVerdict).toBe(true);
+    expect(kitMocks.allureQualityGate.hasQgRules).toBe(false);
+    expect(kitMocks.sonarQualityGate.hasQgRules).toBe(true);
+    expect(kitMocks.sonarQualityGate.qgRuleCount).toBeGreaterThanOrEqual(2);
+    expect(kitMocks.allureQualityGate.qgDots).toBe(0);
+    expect(kitMocks.testsTable.barDots).toBeGreaterThan(0);
+    expect(kitMocks.testsTable.hasTable).toBe(true);
+    expect(kitMocks.testsTable.tableRowCount).toBe(5);
+    expect(kitMocks.testsTable.tableColCount).toBe(4);
+    expect(kitMocks.testsTable.hasTrend).toBe(true);
+    expect(kitMocks.testsTable.hasStability).toBe(true);
+
+    await page.getByTestId('anb-palette-allureQualityGate').click();
+    await page.getByTestId('anb-palette-sonarQualityGate').click();
+    await page.getByTestId('anb-palette-testsTable').click();
+
+    const canvasQgChrome = await page.evaluate(() => {
+      const A = globalThis.__ANB__;
+      const aqg = {
+        id: 'allureQualityGate',
+        type: 'qualityGate',
+        x: 0,
+        y: 0,
+        w: 2,
+        h: 2,
+      };
+      const panel = A.panelInnerHtml(aqg);
+      const preview = A.previewItemHtml(aqg);
+      const aqgEl = document.querySelector(
+        '.anb-canvas [data-testid="anb-kit-mock-allureQualityGate"]',
+      );
+      const sqgEl = document.querySelector(
+        '.anb-canvas [data-testid="anb-kit-mock-sonarQualityGate"]',
+      );
+      const canvas = document.getElementById('anb-canvas');
+      const anbBar = parseFloat(
+        getComputedStyle(canvas!).getPropertyValue('--anb-bar-h') || '0',
+      );
+      const aqgBar = aqgEl?.querySelector('.quality-gate__bar');
+      const barH = aqgBar ? parseFloat(getComputedStyle(aqgBar).height) : 0;
+
+      // Mount preview HTML to assert body-only Passed = success + centered (no hybrid bar).
+      const mount = document.createElement('div');
+      mount.style.cssText = 'position:fixed;left:-9999px;top:0;width:240px;height:160px;';
+      mount.innerHTML = preview;
+      document.body.appendChild(mount);
+      if (typeof window.WidgetTileMocks !== 'undefined' && window.WidgetTileMocks.fill) {
+        window.WidgetTileMocks.fill(mount, { force: true });
+      }
+      const previewMock = mount.querySelector(
+        '[data-testid="anb-kit-mock-allureQualityGate"]',
+      ) as HTMLElement | null;
+      const previewBarDots = mount.querySelectorAll('.widget-tile__bar .indicator').length;
+      const sqgPreview = A.previewItemHtml({
+        id: 'sonarQualityGate',
+        type: 'qualityGate',
+        x: 0,
+        y: 0,
+        w: 2,
+        h: 2,
+      });
+      const ttPreview = A.previewItemHtml({
+        id: 'testsTable',
+        type: 'testsTable',
+        x: 0,
+        y: 0,
+        w: 2,
+        h: 2,
+      });
+      const extra = document.createElement('div');
+      extra.innerHTML = sqgPreview + ttPreview;
+      if (typeof window.WidgetTileMocks !== 'undefined' && window.WidgetTileMocks.fill) {
+        window.WidgetTileMocks.fill(extra, { force: true });
+      }
+      const previewSqgBarDots = extra.querySelectorAll(
+        '[data-panel-id="sonarQualityGate"] .widget-tile__bar .indicator',
+      ).length;
+      const previewTableBarDots = extra.querySelectorAll(
+        '[data-panel-id="testsTable"] .widget-tile__bar .indicator',
+      ).length;
+      extra.remove();
+      const previewBody = previewMock?.querySelector('.quality-gate__body') as HTMLElement | null;
+      const previewVerdict = previewMock?.querySelector(
+        '.quality-gate__verdict--ok',
+      ) as HTMLElement | null;
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--color-success)';
+      document.body.appendChild(probe);
+      const successColor = getComputedStyle(probe).color;
+      probe.remove();
+      const previewBodyCs = previewBody ? getComputedStyle(previewBody) : null;
+      const previewVerdictCs = previewVerdict ? getComputedStyle(previewVerdict) : null;
+      const previewPassed = {
+        color: previewVerdictCs?.color ?? '',
+        successColor,
+        colorMatchesSuccess: Boolean(
+          previewVerdictCs && successColor && previewVerdictCs.color === successColor,
+        ),
+        display: previewBodyCs?.display ?? '',
+        justifyContent: previewBodyCs?.justifyContent ?? '',
+        alignItems: previewBodyCs?.alignItems ?? '',
+      };
+      mount.remove();
+
+      const canvasVerdict = aqgEl?.querySelector(
+        '.quality-gate__verdict--ok',
+      ) as HTMLElement | null;
+      const canvasVerdictColor = canvasVerdict ? getComputedStyle(canvasVerdict).color : '';
+
+      return {
+        panelHasEditorBar: /anb-panel__bar/.test(panel),
+        panelHasQgBar: /quality-gate__bar/.test(panel),
+        previewHasProductBar: /widget-tile__bar/.test(preview),
+        previewHasQgBar: /quality-gate__bar/.test(preview),
+        previewBarDots,
+        previewSqgBarDots,
+        previewTableBarDots,
+        canvasHasQgBar: Boolean(aqgEl?.querySelector('.quality-gate__bar')),
+        canvasHasEditorBar: Boolean(
+          aqgEl?.closest('.anb-panel')?.querySelector('.anb-panel__bar'),
+        ),
+        canvasHasDelete: Boolean(
+          aqgEl?.closest('.anb-panel')?.querySelector('[data-anb-action="delete"]'),
+        ),
+        aqgTitle: aqgEl?.querySelector('.quality-gate__bar-title')?.textContent ?? '',
+        sqgTitle: sqgEl?.querySelector('.quality-gate__bar-title')?.textContent ?? '',
+        sqgFormulas: [
+          ...(sqgEl?.querySelectorAll('.quality-gate__formula') ?? []),
+        ].map((n) => n.textContent?.trim() ?? ''),
+        aqgVerdict: aqgEl?.querySelector('.quality-gate__verdict')?.textContent?.trim() ?? '',
+        qgBarCount: aqgEl?.querySelectorAll('.quality-gate__bar').length ?? 0,
+        anbBar,
+        barH,
+        titleAlign: aqgEl
+          ? getComputedStyle(aqgEl.querySelector('.quality-gate__bar-title')!).textAlign
+          : '',
+        hasInfo: Boolean(aqgEl?.querySelector('.quality-gate__bar .qg-info')),
+        hasIndicator: Boolean(aqgEl?.querySelector('.quality-gate__bar .indicator')),
+        previewPassed,
+        canvasVerdictMatchesSuccess: Boolean(
+          canvasVerdictColor && successColor && canvasVerdictColor === successColor,
+        ),
+        qgFootprint: (() => {
+          const el = aqgEl?.closest('.grid-stack-item');
+          return {
+            w: Number(el?.getAttribute('gs-w') || 0),
+            h: Number(el?.getAttribute('gs-h') || 0),
+          };
+        })(),
+      };
+    });
+    // LOCKED: jar/TG = product bar (dots); editor = hybrid title-only (no QG status indicator/info).
+    expect(canvasQgChrome.panelHasEditorBar).toBe(false);
+    expect(canvasQgChrome.panelHasQgBar).toBe(true);
+    expect(canvasQgChrome.previewHasProductBar).toBe(true);
+    expect(canvasQgChrome.previewHasQgBar).toBe(false);
+    expect(canvasQgChrome.previewBarDots).toBeGreaterThan(0);
+    expect(canvasQgChrome.previewSqgBarDots).toBeGreaterThan(0);
+    expect(canvasQgChrome.previewTableBarDots).toBeGreaterThan(0);
+    expect(canvasQgChrome.canvasHasEditorBar).toBe(false);
+    expect(canvasQgChrome.canvasHasQgBar).toBe(true);
+    expect(canvasQgChrome.canvasHasDelete).toBe(true);
+    expect(canvasQgChrome.qgBarCount).toBe(1);
+    expect(canvasQgChrome.aqgTitle).toBe('Allure Quality Gate');
+    expect(canvasQgChrome.sqgTitle).toBe('Sonar Quality Gate');
+    expect(canvasQgChrome.aqgVerdict).toBe('Passed');
+    expect(canvasQgChrome.sqgFormulas).toEqual(['72<80', '3>0']);
+    expect(Math.abs(canvasQgChrome.barH - canvasQgChrome.anbBar)).toBeLessThan(1.5);
+    expect(canvasQgChrome.titleAlign).toBe('left');
+    expect(canvasQgChrome.hasInfo).toBe(false);
+    expect(canvasQgChrome.hasIndicator).toBe(false);
+    expect(canvasQgChrome.qgFootprint.w).toBe(2);
+    expect(canvasQgChrome.qgFootprint.h).toBe(2);
+    // Body-only TG preview: Passed = success + centered (not gated on hybrid __bar).
+    expect(canvasQgChrome.previewPassed.colorMatchesSuccess).toBe(true);
+    expect(canvasQgChrome.previewPassed.display).toBe('flex');
+    expect(canvasQgChrome.previewPassed.justifyContent).toBe('center');
+    expect(canvasQgChrome.previewPassed.alignItems).toBe('center');
+    expect(canvasQgChrome.canvasVerdictMatchesSuccess).toBe(true);
+
+    const canvasTestsTable = page.locator('.anb-canvas [data-testid="anb-kit-mock-testsTable"]');
+    await expect(canvasTestsTable.locator('thead th')).toHaveCount(4);
+    await expect(canvasTestsTable.locator('thead th').nth(3)).toHaveText('Stability');
+    await expect(canvasTestsTable.locator('.tests-table-panel__name').first()).toHaveText('shouldLogin…');
+    await expect(canvasTestsTable.locator('.tests-table-panel__stability').first()).toBeVisible();
+
+    // Height-fill: visible rows === measured maxRows; no void ≥ rowH under last row.
+    await expect
+      .poll(async () => {
+        return canvasTestsTable.evaluate((host) => {
+          const thead = host.querySelector('thead tr');
+          const rows = [...host.querySelectorAll('tbody tr')];
+          const hostBox = host.getBoundingClientRect();
+          const headerH = thead?.getBoundingClientRect().height ?? 0;
+          const rowH = rows[0]?.getBoundingClientRect().height ?? 0;
+          const maxRows =
+            rowH > 0 ? Math.max(1, Math.floor((hostBox.height - headerH) / rowH)) : 0;
+          const lastBottom = rows[rows.length - 1]?.getBoundingClientRect().bottom ?? hostBox.top;
+          const voidBelow = hostBox.bottom - lastBottom;
+          return {
+            rowCount: rows.length,
+            maxRows,
+            voidBelow,
+            rowH,
+            overflowY: getComputedStyle(host).overflowY,
+          };
+        });
+      })
+      .toMatchObject({
+        overflowY: 'hidden',
+      });
+    const fillSnap = await canvasTestsTable.evaluate((host) => {
+      const thead = host.querySelector('thead tr');
+      const rows = [...host.querySelectorAll('tbody tr')];
+      const hostBox = host.getBoundingClientRect();
+      const headerH = thead?.getBoundingClientRect().height ?? 0;
+      const rowH = rows[0]?.getBoundingClientRect().height ?? 0;
+      const maxRows = Math.max(1, Math.floor((hostBox.height - headerH) / rowH));
+      const lastBottom = rows[rows.length - 1]?.getBoundingClientRect().bottom ?? hostBox.top;
+      return {
+        rowCount: rows.length,
+        maxRows,
+        voidBelow: hostBox.bottom - lastBottom,
+        rowH,
+      };
+    });
+    expect(fillSnap.rowCount).toBe(fillSnap.maxRows);
+    expect(fillSnap.rowCount).toBeGreaterThanOrEqual(1);
+    expect(fillSnap.voidBelow).toBeLessThan(fillSnap.rowH);
+
+    const rowCountBeforeGrow = fillSnap.rowCount;
+    await page.evaluate(() => {
+      const item = document.querySelector(
+        '.anb-canvas .grid-stack-item[data-panel-id="testsTable"]',
+      );
+      const host = document.querySelector(
+        '.anb-canvas [data-testid="anb-kit-mock-testsTable"]',
+      );
+      if (!(item instanceof HTMLElement) || !(host instanceof HTMLElement)) {
+        throw new Error('testsTable tile/host missing');
+      }
+      const row = host.querySelector('tbody tr');
+      if (!row) throw new Error('testsTable has no rows');
+      const rowH = row.getBoundingClientRect().height;
+      const newH = Math.ceil(item.getBoundingClientRect().height + rowH * 4);
+      item.style.height = `${newH}px`;
+      item.style.minHeight = `${newH}px`;
+    });
+    await expect
+      .poll(async () => canvasTestsTable.locator('tbody tr').count(), { timeout: 1500 })
+      .toBeGreaterThan(rowCountBeforeGrow);
+
+    await expect
+      .poll(async () => {
+        const raw = await page.getByTestId('anb-terminal').innerText();
+        return JSON.parse(raw).base.chart;
+      })
+      .toMatchObject({
+        profile: 'kit',
+        items: expect.arrayContaining([
+          expect.objectContaining({ id: 'allureQualityGate', type: 'qualityGate' }),
+          expect.objectContaining({ id: 'sonarQualityGate', type: 'qualityGate' }),
+          expect.objectContaining({ id: 'testsTable', type: 'testsTable' }),
+        ]),
+      });
+
+    await page.getByTestId('anb-export-tg').hover();
+    await expect(page.getByTestId('anb-export-popover')).toBeVisible();
+    await expect(
+      page.locator(
+        '#anb-export-popover-stage .widget-tile[data-chart="qualityGate"] .widget-tile__bar .indicator',
+      ),
+    ).not.toHaveCount(0);
+
+    await page.getByTestId('anb-chart-profile').selectOption('default');
+    await expect(palette.locator('.anb-palette__item')).toHaveCount(17);
+    await expect(page.getByTestId('anb-palette-allureQualityGate')).toHaveCount(0);
+    await expect(page.getByTestId('anb-palette-testsTable')).toHaveCount(0);
+
+    await expect
+      .poll(async () => {
+        const raw = await page.getByTestId('anb-terminal').innerText();
+        const chart = JSON.parse(raw).base.chart;
+        return {
+          profile: chart.profile,
+          qgCount: chart.items.filter(
+            (item: { type?: string }) => item.type === 'qualityGate',
+          ).length,
+          testsTableCount: chart.items.filter(
+            (item: { type?: string }) => item.type === 'testsTable',
+          ).length,
+        };
+      })
+      .toEqual({ profile: 'default', qgCount: 2, testsTableCount: 1 });
+
+    expect(errors, errors.join('\n')).toEqual([]);
+  });
+
+  test('assistant panel: modes, signals/config import, rules + ai apply', async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on('console', (msg) => {
+      // Stubbed 500 below logs a benign "Failed to load resource" console error.
+      if (msg.type() === 'error' && !msg.text().startsWith('Failed to load resource'))
+        errors.push(`console:${msg.text()}`);
+    });
+    page.on('pageerror', (err) => errors.push(`pageerror:${err.message}`));
+
+    const llmCalls: string[] = [];
+    await page.route('**/chat/completions', async (route) => {
+      llmCalls.push(route.request().postData() ?? '');
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  items: ['currentStatus', 'testingPyramid', 'statusDynamics'],
+                  profile: 'default',
+                }),
+              },
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.goto('/');
+
+    const panel = page.getByTestId('anb-assistant');
+    const importBox = page.getByTestId('anb-suggest-import-input');
+
+    // Panel is a permanent section; mode manual = no apply, no AI fields.
+    await expect(panel).toBeVisible();
+    await expect(page.getByTestId('anb-mode-manual')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('anb-mode-manual')).toHaveClass(/plaque-field-seg__btn--on/);
+    await expect(page.getByTestId('anb-assistant-actions')).toBeHidden();
+    await expect(page.getByTestId('anb-ai-section')).toBeHidden();
+
+    // No manual controls — signals come only from the import box.
+    await expect(page.getByTestId('anb-sg-summary')).toBeHidden();
+
+    // Toolbar button scrolls the panel into view.
+    await page.getByTestId('anb-btn-suggest').click();
+
+    // Rules mode → Apply appears; ai section still hidden; active chip moves.
+    await page.getByTestId('anb-mode-rules').click();
+    await expect(page.getByTestId('anb-mode-rules')).toHaveClass(/plaque-field-seg__btn--on/);
+    await expect(page.getByTestId('anb-mode-manual')).not.toHaveClass(/plaque-field-seg__btn--on/);
+    await expect(page.getByTestId('anb-assistant-actions')).toBeVisible();
+    await expect(page.getByTestId('anb-suggest-apply')).toHaveText('Apply');
+    await expect(page.getByTestId('anb-ai-section')).toBeHidden();
+
+    // Invalid JSON in the import box → inline error, signals untouched.
+    await page.getByTestId('anb-suggest-import').locator('summary').click();
+    await importBox.fill('{nope');
+    await expect(page.getByTestId('anb-suggest-import-error')).toContainText('valid JSON');
+    await expect(page.getByTestId('anb-sg-summary')).toBeHidden();
+
+    // Valid CLI signals JSON → summary shows the raw facts.
+    await importBox.fill(
+      JSON.stringify({
+        statistic: { passed: 40, failed: 3, broken: 1, skipped: 0, unknown: 0, total: 44 },
+        historyRunCount: 12,
+        hasLayerLabels: true,
+        hasKnownLayerLabels: true,
+        knownLayerCount: 2,
+        layers: { unit: 8, e2e: 2 },
+      }),
+    );
+    await expect(page.getByTestId('anb-suggest-import-error')).toBeHidden();
+    await expect(page.getByTestId('anb-sg-summary')).toContainText('44 tests');
+    await expect(page.getByTestId('anb-sg-summary')).toContainText('12 runs');
+    await expect(page.getByTestId('anb-sg-summary')).toContainText('2 layers');
+
+    // History + known layers → 7-tile hero on 870×1080.
+    await page.getByTestId('anb-suggest-apply').click();
+    await expect(page.locator('#anb-grid .grid-stack-item')).toHaveCount(7);
+    await expect
+      .poll(async () => {
+        const chart = JSON.parse(
+          await page.getByTestId('anb-terminal').innerText(),
+        ).base.chart;
+        return { w: chart.width, profile: chart.profile, count: chart.items.length };
+      })
+      .toEqual({ w: 870, profile: 'default', count: 7 });
+
+    // AI mode → endpoint fields + relabeled apply; empty model → honest error.
+    await page.getByTestId('anb-mode-ai').click();
+    await expect(page.getByTestId('anb-ai-section')).toBeVisible();
+    await expect(page.getByTestId('anb-suggest-apply')).toHaveText('Ask AI');
+    // Preset fills endpoint + model.
+    await page.getByTestId('anb-ai-preset').selectOption('local');
+    await expect(page.getByTestId('anb-ai-base-url')).toHaveValue('http://localhost:11434/v1');
+    await expect(page.getByTestId('anb-ai-model')).toHaveValue('qwen2.5-coder:7b');
+    await page.getByTestId('anb-ai-model').fill('');
+    await page.getByTestId('anb-suggest-apply').click();
+    await expect(page.getByTestId('anb-suggest-error')).toContainText('base url and model');
+
+    // AI answers via the shared advisor → items materialized on canvas.
+    await page.getByTestId('anb-ai-model').fill('qwen3-coder:30b');
+    await page.getByTestId('anb-suggest-apply').click();
+    await expect(page.getByTestId('anb-assistant-note')).toContainText('ai layout applied');
+    expect(llmCalls).toHaveLength(1);
+    expect(llmCalls[0]).toContain('qwen3-coder:30b');
+    await expect
+      .poll(async () => {
+        const chart = JSON.parse(
+          await page.getByTestId('anb-terminal').innerText(),
+        ).base.chart;
+        return chart.items.map((item: { type: string }) => item.type);
+      })
+      .toEqual(['currentStatus', 'statusDynamics', 'testingPyramid']);
+
+    // AI failure → warning + deterministic fallback (same contract as the CLI).
+    await page.unroute('**/chat/completions');
+    await page.route('**/chat/completions', async (route) => {
+      await route.fulfill({ status: 500, body: 'oops' });
+    });
+    await importBox.fill(
+      JSON.stringify({
+        statistic: { passed: 8, failed: 2, broken: 0, skipped: 0, unknown: 0, total: 10 },
+      }),
+    );
+    await page.getByTestId('anb-suggest-apply').click();
+    await expect(page.getByTestId('anb-suggest-error')).toContainText('ai failed');
+    await expect(page.getByTestId('anb-suggest-error')).toContainText('rules');
+    await expect
+      .poll(async () => {
+        const chart = JSON.parse(
+          await page.getByTestId('anb-terminal').innerText(),
+        ).base.chart;
+        return chart.items.map((item: { type: string }) => item.type);
+      })
+      .toContain('problemsDistribution');
+
+    // A full suggest config in the import → ids re-materialized (same layout).
+    await importBox.fill(
+      JSON.stringify({
+        base: {
+          chart: {
+            profile: 'kit',
+            items: [
+              { type: 'currentStatus', x: 99, y: 99, w: 1, h: 1 },
+              { type: 'allureQualityGate', x: 0, y: 0, w: 1, h: 1 },
+            ],
+          },
+        },
+      }),
+    );
+    await expect(page.getByTestId('anb-assistant-note')).toContainText('imported config layout');
+    await expect
+      .poll(async () => {
+        const chart = JSON.parse(
+          await page.getByTestId('anb-terminal').innerText(),
+        ).base.chart;
+        return {
+          profile: chart.profile,
+          types: chart.items.map((i: { id?: string; type: string }) => i.id ?? i.type),
+        };
+      })
+      .toEqual({ profile: 'kit', types: ['currentStatus', 'allureQualityGate'] });
+
+    // Manual mode → apply row hidden again; imported signals persist.
+    await page.getByTestId('anb-mode-manual').click();
+    await expect(page.getByTestId('anb-assistant-actions')).toBeHidden();
+    await expect(page.getByTestId('anb-sg-summary')).toBeVisible();
+
+    expect(errors, errors.join('\n')).toEqual([]);
+  });
+});

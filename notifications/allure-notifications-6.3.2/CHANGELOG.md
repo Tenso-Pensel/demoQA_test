@@ -1,0 +1,396 @@
+# Changelog
+
+## v 6.3.2
+
+### English
+
+- **builder: Assistant fixes** — the active mode button now gets `plaque-field-seg__btn--on` (was `aria-pressed` only, so nothing looked selected); AI endpoint fields (`preset`, `base url`, `model`, `timeout`) persist in `localStorage` across reloads — the api key is intentionally never stored.
+
+### Russian
+
+- **builder: фиксы Assistant** — активная кнопка режима теперь получает `plaque-field-seg__btn--on` (раньше выставлялся только `aria-pressed`, визуального выделения не было); поля AI-эндпоинта (`preset`, `base url`, `model`, `timeout`) персистятся в `localStorage` между перезагрузками — api key намеренно не сохраняется.
+
+## v 6.3.1
+
+### English
+
+- **builder: Assistant panel** — the Suggest popover becomes a permanent panel with three modes: `manual` (never touches the canvas), `rules` (offline tier-0 scorer), `ai` (LLM picks panel ids; `materializeLayout` still owns the canonical slots). Import accepts both `--signals` JSON (becomes the effective signals, summarized inline) and a full suggest config (ids + profile re-materialized — identical layout to the CLI).
+- **Shared advisor** — `suggestLayoutViaLlm` moved to `@qa-guru/allure-notifications-config` and is vendored into the builder, so CLI and browser run literally the same prompt/validation/materialization code.
+- **AI endpoint presets + auth** — `custom` / `local ollama` / `ollama-box2 qa.guru`; `ANB_AI_API_KEY` (or the builder api-key field) accepts `user:pass` → HTTP Basic, anything else → Bearer.
+- **Configurable AI timeout** — advisor default 15s → 60s; builder `timeout s` field and `ANB_AI_TIMEOUT_MS` env (invalid/≤0 → default). A 401 with an empty key now says to use `user:pass`.
+
+### Russian
+
+- **builder: панель Assistant** — поповер Suggest стал постоянной панелью с тремя режимами: `manual` (канва не трогается), `rules` (оффлайн scorer яруса 0), `ai` (LLM выбирает id панелей; канонические слоты по-прежнему назначает `materializeLayout`). Импорт принимает и `--signals` JSON (становится effective signals + inline-сводка), и готовый suggest-конфиг (id + profile рематериализуются — layout идентичен CLI).
+- **Общий advisor** — `suggestLayoutViaLlm` переехал в `@qa-guru/allure-notifications-config` и вендорится в builder: CLI и браузер выполняют буквально один код промпта/валидации/материализации.
+- **Пресеты AI-эндпоинта + auth** — `custom` / `local ollama` / `ollama-box2 qa.guru`; `ANB_AI_API_KEY` (или поле api key в билдере) принимает `user:pass` → HTTP Basic, иначе → Bearer.
+- **Настраиваемый таймаут AI** — дефолт advisor'а 15s → 60s; поле `timeout s` в билдере и env `ANB_AI_TIMEOUT_MS` в CLI (невалидное/≤0 → дефолт). 401 с пустым ключом теперь честно подсказывает `user:pass`.
+
+## v 6.3.0
+
+### English
+
+- **`suggest` command** — `allure-notifications suggest --results <dir>` prints a send-valid collage config recommended from the actual report (deterministic tier-0 scorer in `@qa-guru/allure-notifications-config`: `suggestLayout` + `materializeLayout` + canonical `SUGGEST_TEMPLATES`). Supports `--profile`, `--config`, `--out/--write`; `--signals` prints the compact signals JSON instead of a config. Offline — nothing is sent.
+- **Optional LLM advisor (tier 1)** — with `ANB_AI_BASE_URL` / `ANB_AI_MODEL` / `ANB_AI_API_KEY` set, an OpenAI-compatible endpoint picks panel ids from the compact signals; answers are validated against `PANEL_CATALOG` and placed by `materializeLayout`, so the LLM can never invent coordinates. Any failure warns and falls back to tier-0.
+- **builder: Suggest popover** — toolbar button opens a signals form (results / history & layers / kit payloads + profile) with a collapsible CLI `--signals` import; applies the canonical layout to the canvas. Payload checkboxes disable until a `chart.*Path` exists; form and import state persist between opens.
+- **docs** — `telegram-dogfood.md` points at the live token source `~/.config/telegram-bot.token`.
+
+### Russian
+
+- **Команда `suggest`** — `allure-notifications suggest --results <dir>` печатает валидный для `send` коллаж-конфиг, рекомендованный по фактическому отчёту (детерминированный scorer яруса 0 в `@qa-guru/allure-notifications-config`: `suggestLayout` + `materializeLayout` + канонические `SUGGEST_TEMPLATES`). Опции `--profile`, `--config`, `--out/--write`; `--signals` печатает compact signals JSON вместо конфига. Оффлайн — ничего не отправляется.
+- **Опциональный LLM-советник (ярус 1)** — при заданных `ANB_AI_BASE_URL` / `ANB_AI_MODEL` / `ANB_AI_API_KEY` OpenAI-compatible эндпоинт выбирает id панелей по compact signals; ответ валидируется по `PANEL_CATALOG`, координаты назначает `materializeLayout` — LLM физически не может породить произвольную раскладку. Любой сбой → warning + откат на ярус 0.
+- **builder: поповер Suggest** — кнопка в тулбаре открывает форму сигналов (results / history & layers / kit payloads + profile) со сворачиваемым импортом `--signals` из CLI; применяет канонический шаблон к канве. Payload-чекбоксы неактивны, пока не задан `chart.*Path`; состояние формы и импорта сохраняется между открытиями.
+- **docs** — `telegram-dogfood.md` указывает на живой источник токена `~/.config/telegram-bot.token`.
+
+## v 6.2.3
+
+### English
+
+- **currentStatus** — leftover chart item `type: pie` maps to `currentStatus` again (Jenkins configs that never renamed the slot). Card title stays the project name, not `pie`; unknown types still get `No data yet`.
+- **kit-only tiles** — a skipped `qualityGate` / `testsTable` tile under the default profile now prints a warning naming the tile and the `chart.profile: "kit"` fix (previously only behind `ALLURE_NOTIFICATIONS_DEBUG`).
+- **builder** — palette ends with a note when the default profile hides the kit-only slots; e2e suite moved to a node http server (python `http.server` connection resets caused the dead-app flake).
+
+### Russian
+
+- **currentStatus** — старый `type: pie` в items снова рендерит donut статуса (хвосты Jenkins). Заголовок карточки — имя проекта, не `pie`; неизвестные типы по-прежнему `No data yet`.
+- **kit-only панели** — пропущенный тайл `qualityGate` / `testsTable` при дефолтном профиле теперь пишет warning с именем тайла и подсказкой `chart.profile: "kit"` (раньше только под `ALLURE_NOTIFICATIONS_DEBUG`).
+- **builder** — в конце палитры заметка о скрытых kit-only слотах при дефолтном профиле; e2e переведены на node http-сервер (`http.server` python сбрасывал соединения — dead-app флак).
+
+## v 6.2.2
+
+### English
+
+- **Remove `@qa-guru/allure-notifications-pyramid`** — collage palette + testing-pyramid geometry now come from `@qa-guru/allure-report-kit` (`/collage` export, ≥0.3.3). Builder vendor sync → `sync-kit-collage.mjs`.
+
+### Russian
+
+- **Удалён `@qa-guru/allure-notifications-pyramid`** — палитра коллажа и геометрия testing pyramid теперь из `@qa-guru/allure-report-kit` (export `/collage`, ≥0.3.3). Vendor builder → `sync-kit-collage.mjs`.
+
+## v 6.2.1
+
+### English
+
+- **Kit pin train** — `@qa-guru/allure-notifications-core` depends on `@qa-guru/allure-report-kit` via `^0.3.2` (no nested exact `0.3.0` lag)
+
+### Russian
+
+- **Kit pin train** — `@qa-guru/allure-notifications-core` зависит от `@qa-guru/allure-report-kit` через `^0.3.2` (без nested exact `0.3.0`)
+
+## v 6.2.0
+
+### English
+
+- **Dark collage** — quality-gate and tests-table kit tiles use dark surface in `base.darkMode: true` (no near-white bodies)
+- **Version line** — unified workspace + npm pin **6.2.0** for CLI, core, config, pyramid, plugin (fixes CLI 6.1.3 → core 6.1.1 gap)
+- **Chart** — drop dead `chart.mode: pie` from zod schema, builder UI, and 6.x README; TS runtime always renders collage PNG (legacy jar pie remains on branch `legacy/java-5.0.8` only)
+
+### Russian
+
+- **Dark collage** — quality-gate и tests-table в kit-тайлах используют тёмную surface при `base.darkMode: true` (без near-white тел)
+- **Версии** — единый pin **6.2.0** для CLI, core, config, pyramid, plugin (закрыт gap CLI 6.1.3 → core 6.1.1)
+- **Chart** — убран мёртвый `chart.mode: pie` из zod-схемы, builder UI и README 6.x; TS runtime всегда рендерит collage PNG (legacy jar `pie` только на ветке `legacy/java-5.0.8`)
+
+## v 6.1.3
+
+### English
+
+- **CLI proxy auth** — `config.proxy` username/password; fallback `MICROSOCKS_USER`/`MICROSOCKS_PASS` (or `ALLURE_NOTIFICATIONS_PROXY_*`). Required for qa.guru microsocks (`proxy.qaguru.school:7777`); use `prepare-telegram-socks-proxy.sh` on agents.
+
+### Russian
+
+- **CLI proxy auth** — username/password в `config.proxy`; fallback `MICROSOCKS_USER`/`MICROSOCKS_PASS` (или `ALLURE_NOTIFICATIONS_PROXY_*`). Нужно для microsocks qa.guru; на агентах — `prepare-telegram-socks-proxy.sh`.
+
+## v 6.1.2
+
+### English
+
+- **CLI `config.proxy`** — live Telegram `sendPhoto` uses undici `ProxyAgent` / `Socks5ProxyAgent` from top-level `proxy` (http \| socks5). Fixes `fetch failed` on hosts that cannot reach `api.telegram.org` directly (e.g. qa.guru Jenkins agents). Explicit `fetchImpl` still wins for tests.
+
+### Russian
+
+- **CLI `config.proxy`** — live Telegram `sendPhoto` ходит через undici `ProxyAgent` / `Socks5ProxyAgent` из top-level `proxy` (http \| socks5). Чинит `fetch failed` там, где нет прямого доступа к `api.telegram.org` (агенты Jenkins qa.guru). Явный `fetchImpl` по-прежнему перекрывает proxy в тестах.
+
+## v 6.0.13
+
+### English
+
+- **GitHub Marketplace Action** — root `action.yml` sends an existing Allure report with no second generate or consumer config renderer
+- **CLI overrides** — report/results folders, project, and report/dashboard/TestOps/build links; override paths resolve from the consumer working directory
+- **Action E2E** — runnable `uses: ./` workflow generates the dogfood report once and asserts the collage
+
+### Russian
+
+- **GitHub Marketplace Action** — корневой `action.yml` отправляет готовый Allure-отчёт без второго generate и consumer renderer
+- **CLI overrides** — пути report/results, project и ссылки report/dashboard/TestOps/build; пути overrides считаются от working directory consumer
+- **Action E2E** — runnable workflow с `uses: ./` один раз генерирует dogfood report и проверяет collage
+
+## v 6.0.12
+
+### English
+
+- **README** — Omni-tool icon strips, ANB on iPad Pro 13 landscape frame, Telegram notification example, `proxy` in minimal `config.json`
+- **Chart** — free-grid / panels id is Allure 3 `currentStatus` only (drop `pie` alias); `chart.mode: pie` stays legacy
+- **Builder e2e** — palette testids follow `anb-palette-currentStatus`
+
+### Russian
+
+- **README** — Omni-tool strips, ANB в рамке iPad Pro 13 landscape, пример Telegram-уведомления, блок `proxy` в минимальном `config.json`
+- **Chart** — free-grid / panels id — только Allure 3 `currentStatus` (без алиаса `pie`); `chart.mode: pie` остаётся legacy
+- **Builder e2e** — palette testids → `anb-palette-currentStatus`
+
+## v 6.0.11
+
+### English
+
+- **Coverage** — `resolvePhraseLanguage` unit tests (`packages/config/test/phrases.test.ts`); builder e2e covers palette `dragend` non-Element target (100% branch gate on Node 26)
+
+### Russian
+
+- **Coverage** — unit-тесты `resolvePhraseLanguage` (`packages/config/test/phrases.test.ts`); builder e2e закрывает `dragend` с non-Element target (100% branch gate на Node 26)
+
+## v 6.0.10
+
+### English
+
+- **Toolchain** — unified **Node 26** (CI, `.nvmrc`, `engines.node >=26`) and **TypeScript 7.0.2** pin across workspace; `@types/node` **26.1.2**
+- **Builder** — PWA baseline (manifest / service worker / icons); tighter preview-bar + Telegram header chrome
+- **Locale** — Morse (`morse`) phrases across TS schema, builder vendor, and Java resources
+
+### Russian
+
+- **Toolchain** — единый **Node 26** (CI, `.nvmrc`, `engines.node >=26`) и pin **TypeScript 7.0.2** по workspace; `@types/node` **26.1.2**
+- **Builder** — PWA baseline (manifest / service worker / icons); компактнее preview-bar и Telegram header
+- **Locale** — Morse (`morse`) phrases в TS schema, builder vendor и Java resources
+
+## v 6.0.9
+
+### English
+
+- **TS test blanket** ([PR #496](https://github.com/qa-guru/allure-notifications/pull/496)) — c8 hard floors lines/statements **100%** on `packages/{config,pyramid,core,cli,plugin}/src`; builder e2e blanket + Playwright tests migrated to TypeScript; `@qa-guru/allure-notifications-test-meta` for explicit Allure suite labels
+- **Collage** — cap pyramid/durations tile height in tall free-layout cells; Telegram CI layout pyramid w3 + durations by layer w4; pie paints 1-test slices as dots when Skia drops tiny arcs
+- **Telegram** — FTL-parity caption (RU labels, real links); CI sends this-run report (no dogfood fallback); single-run collage with testing pyramid
+- **Builder** — theme/terminal/darkMode sync; L-bracket gutter chrome; palette 4-up/5-up; monochrome Allure header mark; `@qa-guru/allure-notifications-config` phrase SSOT in browser bundle
+- **feat: German locale (`de`)** — schema, jar phrases/legend, builder select, CLI Telegram caption, preview omni-tool flag; shared `PHRASES` in `@qa-guru/allure-notifications-config`
+- **Quality** — Sonar gate clean on `allure-notifications` projectKey; panel gallery dev script + marketing collage configs
+
+### Russian
+
+- **TS test blanket** ([PR #496](https://github.com/qa-guru/allure-notifications/pull/496)) — c8 hard floors lines/statements **100%** на `packages/{config,pyramid,core,cli,plugin}/src`; builder e2e blanket + Playwright-тесты на TypeScript; `@qa-guru/allure-notifications-test-meta` для явных Allure suite labels
+- **Collage** — cap высоты pyramid/durations в tall free-layout; Telegram CI layout pyramid w3 + durations by layer w4; pie рисует 1-test slices точками, когда Skia теряет tiny arcs
+- **Telegram** — caption FTL-parity (RU labels, реальные links); CI шлёт this-run report (без dogfood fallback); single-run collage с testing pyramid
+- **Builder** — sync theme/terminal/darkMode; L-bracket gutter chrome; palette 4-up/5-up; monochrome Allure mark в header; phrase SSOT из `@qa-guru/allure-notifications-config` в browser bundle
+- **feat: немецкая локаль (`de`)** — schema, jar phrases/legend, select в builder, caption CLI Telegram, флаг в preview omni-tool; общий `PHRASES` в `@qa-guru/allure-notifications-config`
+- **Quality** — Sonar gate clean на projectKey `allure-notifications`; dev-скрипт panel gallery + marketing collage configs
+
+## v 6.0.8
+
+### English
+
+- **Version sync** — CLI, libs, and `@qa-guru/allure-notifications-plugin` all publish as **6.0.8** (align after plugin-only 6.0.7; skip broken 6.0.6)
+- No product feature change vs 6.0.5/6.0.7 — consumer pin is now one number
+
+### Russian
+
+- **Синхронизация версий** — CLI, libs и `@qa-guru/allure-notifications-plugin` публикуются как **6.0.8** (выравнивание после plugin-only 6.0.7; битый 6.0.6 пропускаем)
+- Без новых фич относительно 6.0.5/6.0.7 — один номер для consumers
+
+## v 6.0.7
+
+### English
+
+- **Plugin resolve fix** — `@qa-guru/allure-notifications-plugin` adds `main`/`module`/`types` so Allure 3 `require.resolve` can load the package (6.0.5 / npm `6.0.6` were `exports`-only and broke `allurerc` import)
+- **GitHub Actions example (plugin path)** — `examples/github-actions/` + `.github/workflows/example-plugin-notify.yml` (two-step generate; not CLI Q4)
+
+### Russian
+
+- **Фикс resolve плагина** — у `@qa-guru/allure-notifications-plugin` добавлены `main`/`module`/`types` (6.0.5 / npm `6.0.6` — `exports`-only, Allure не резолвил пакет из `allurerc`)
+- **Пример GitHub Actions (plugin)** — `examples/github-actions/` + `.github/workflows/example-plugin-notify.yml` (два generate; не CLI Q4)
+
+## v 6.0.6
+
+### English
+
+- **Do not use** — npm `6.0.6` published without `main` (same resolve break as 6.0.5). Use **6.0.7**.
+
+### Russian
+
+- **Не использовать** — npm `6.0.6` без `main` (тот же break resolve, что у 6.0.5). Берите **6.0.7**.
+
+## v 6.0.5
+
+### English
+
+- **Allure 3 plugin** — `@qa-guru/allure-notifications-plugin` (`packages/plugin`): `Plugin.done` → parseConfig → core collage PNG → CLI messengers; `mode` dry-run|mock|live (default dry-run); example `examples/allurerc.notifications.mjs`
+
+### Russian
+
+- **Allure 3 plugin** — `@qa-guru/allure-notifications-plugin` (`packages/plugin`): `Plugin.done` → parseConfig → collage PNG (core) → messengers (CLI); `mode` dry-run|mock|live (default dry-run); пример `examples/allurerc.notifications.mjs`
+
+## v 6.0.3
+
+### English
+
+- **Real analytics panels** — `statusDynamics` / `successRate` / `severities` / `suites` (history + results)
+- **Catalog stubs → real** — all 7 former stub types render data when A3/`history.jsonl` present; honest empty captions otherwise
+- **Builder full TypeScript** — `apps/builder/src` → `tsc` emit `js/`; workspace on `typescript@7`
+
+### Russian
+
+- **Реальные analytics-панели** — `statusDynamics` / `successRate` / `severities` / `suites` (history + results)
+- **Catalog stubs → real** — все 7 бывших stub-типов рисуют данные при наличии A3/`history.jsonl`; иначе честные empty captions
+- **Builder на TypeScript** — `apps/builder/src` → emit `js/`; workspace на `typescript@7`
+
+## v 6.0.2
+
+### English
+
+- **CLI `-V` / banner** — report version from `package.json` (npm `6.0.1` incorrectly printed `6.0.0`)
+- **Config validation errors** — path-scoped messages instead of raw Zod JSON dump
+
+### Russian
+
+- **CLI `-V` / banner** — версия из `package.json` (на npm `6.0.1` печаталось `6.0.0`)
+- **Ошибки валидации config** — path-scoped сообщения вместо сырого Zod JSON
+
+## v 5.0.8
+
+### English
+
+- **Horizontal bar panels (suites / severities / durations-by-layer)** — cap row/bar height so a single suite no longer inflates into a near-circular pill that fills the collage tile
+
+### Russian
+
+- **Горизонтальные бары (suites / severities / durations-by-layer)** — потолок высоты строки/бара: одна suite больше не раздувается в «круг» на весь тайл
+
+## v 5.0.7
+
+### English
+
+- **Stacked status-dynamics bars** — segment heights match values exactly without clipping top rounding
+- **`durations` + pyramid order** — layer rows follow testing-pyramid top-to-bottom order
+
+### Russian
+
+- **Stacked status-dynamics** — высоты сегментов без обрезки скругления сверху
+- **`durations` + порядок pyramid** — строки слоёв как в testing pyramid (сверху вниз)
+
+## v 5.0.6
+
+### English
+
+- **Telegram proxy from `config.json`** — `TelegramClient` uses Apache HttpClient via `HttpClientFactory` (same as Slack/Cliq); no `proxychains4` wrapper required
+- **`proxy.type`** — `http` (default) or `socks5`; overrides via `-Dnotifications.proxy.*`
+
+### Russian
+
+- **Telegram через proxy из `config.json`** — `TelegramClient` на Apache HttpClient; SOCKS5 без auth (prod: `proxy.qaguru.school:7777`)
+- **`proxy.type`** — `http` (по умолчанию) или `socks5`; override через `-Dnotifications.proxy.*`
+
+## v 5.0.5
+
+### English
+
+- **SQ-1080 dense 12-tile** — free layout keeps all catalog tiles (empty-state instead of silent drop)
+- **`ChartPanelItem.by` / `groupBy`** — parsed for catalog variants; unknown JSON (incl. `tilePad`) ignored
+- **`chart.tilePad`** — retained for builder/preview parity (renderer unchanged)
+- **Stub panels (empty-state):** `statusTransitions`, `problemsDistribution`, `coverageDiff`, `statusAgePyramid`, `stabilityDistribution`, `durationDynamics`, `testBaseGrowthDynamics`
+- **`durations` + `groupBy: layer`** — per-layer average bars; falls back to histogram when no layer samples
+- Dogfood: `config/config.preview-sq1080.json` → `config/chart-sq1080-dogfood.png` (1080×1080)
+- CB-870 free `items` + legacy `grid|stacked|row` unchanged
+
+### Russian
+
+- **SQ-1080 dense 12-tile** — free layout не silent-drop: stub-панели → empty-state
+- **`by` / `groupBy`** на `ChartPanelItem`; `tilePad` парсится и игнорируется рендерером
+- **`durations` + `groupBy: layer`** — средние по слоям, иначе fallback на гистограмму
+- Dogfood: `config/config.preview-sq1080.json`
+
+## v 5.0.4
+
+### English
+
+- **`chart.cardGap`** — configurable inter-card gap (default **14**, former hard-coded `CARD_GAP`); `CollageRenderer` resolves via `resolveCardGap` alongside existing `headerHeight`
+- **`testResultSeverities` panel** — horizontal severity bars from `allure-results` severity labels (awesome-charts catalog #3); aliases `severities` / `severity`
+- **Alias** `pie` ↔ `currentStatus` unchanged for free-grid `items`
+- **Skipped (no analytics/history series yet):** `statusTransitions`, `testBaseGrowthDynamics`, `coverageDiff`, `problemsDistribution`, `stabilityDistribution`, `durationDynamics`, `statusAgePyramid` — deferred until data model exists
+- Dogfood: `config/config.preview-cb870-cardgap.json` (+ wide gap spot-check)
+- CB-870 free `items` shape unchanged
+
+### Russian
+
+- **`chart.cardGap`** — настраиваемый зазор между карточками (по умолчанию **14**, бывший `CARD_GAP`); `CollageRenderer` читает через `resolveCardGap` вместе с `headerHeight`
+- **Панель `testResultSeverities`** — горизонтальные бары severity из labels `allure-results`
+- Алиас `pie` ↔ `currentStatus` сохранён; форма CB-870 `items` без изменений
+- Остальные типы каталога 17 без данных — stub/skip до появления analytics/history
+
+## v 5.0.0
+
+### English
+
+- **Collage chart** — `chart.mode: collage` renders a 1000×600 PNG with three panels: pie (status), testing pyramid (or suites fallback), and durations
+- **Chart panels** — `PiePanel`, `SuitesPanel`, `DurationsPanel`, `TestingPyramidPanel` via `CollageRenderer`; default `chart.mode: pie` keeps 4.x behaviour
+- **Links block** — `base.links` with report, dashboard, testops, and build URLs; i18n labels in all templates
+- **Allure 3 support** — `ReportLocator` auto-detects Allure 2 (`widgets/summary.json`) vs Allure 3 (`summary.json` at report root)
+- **`reportLink` deprecated** — maps to `links.report`; backward compatible fallback
+- **Report analytics** — `ReportAnalytics` from `allure-results` for pyramid layers, top suites, and duration histogram
+- **Pyramid colors** — Palette A (`PyramidLayerColors`) aligned with monorepo test-layer canon
+- Docs: [migration-5.0.md](docs/migration-5.0.md), [ci-cookbook-5.0.md](docs/ci-cookbook-5.0.md), example [config-5.0-collage.example.json](config/config-5.0-collage.example.json)
+
+### Russian
+
+- **Collage chart** — `chart.mode: collage` формирует PNG 1000×600 с тремя панелями: pie (статусы), testing pyramid (или fallback suites), durations
+- **Панели диаграммы** — `PiePanel`, `SuitesPanel`, `DurationsPanel`, `TestingPyramidPanel` через `CollageRenderer`; по умолчанию `chart.mode: pie` — поведение как в 4.x
+- **Блок links** — `base.links`: report, dashboard, testops, build; i18n-подписи во всех шаблонах
+- **Поддержка Allure 3** — `ReportLocator` автоматически определяет Allure 2 (`widgets/summary.json`) и Allure 3 (`summary.json` в корне отчёта)
+- **`reportLink` устарел** — маппится в `links.report`; обратная совместимость сохранена
+- **Аналитика отчёта** — `ReportAnalytics` из `allure-results`: слои pyramid, top suites, гистограмма durations
+- **Цвета pyramid** — Palette A (`PyramidLayerColors`) по канону test-layers monorepo
+- Документация: [migration-5.0.md](docs/migration-5.0.md), [ci-cookbook-5.0.md](docs/ci-cookbook-5.0.md), пример [config-5.0-collage.example.json](config/config-5.0-collage.example.json)
+
+## v 2.0.1
+
+### English
+- Updated [README.md](README.md) to use the new command line parsing library
+- Added message templates (_ru/en_)
+- Added support for English
+- Added contract of bots (_AllureBot_)
+- Added BaseClient for sending messages (_by default in telegram_)
+- Added TelegramClient to encapsulate the logic for sending messages via TelegramBot
+- Refactoring of the PieChartBuilder class
+- Removed PieChartBot and TextBot
+- Added Attachment class, encapsulating photo and text creation for sending via bot
+
+### Russian
+- Обновлён [README.md](README.md) под использование новой библиотеки парсинга командной строки
+- Добавлены темплейты сообщений (_ru/en_)
+- Добавлена поддержка английского языка
+- Добавлен контракт ботов AllureBot
+- Добавлен BaseClient для отправки сообщений (_по умолчанию в telegram_)
+- Добавлен TelegramClient для инкапсулирования логики по отправке сообщений через TelegramBot
+- Произведён рефакторинг класса PieChartBuilder
+- Удалены PieChartBot и TextBot
+- Добавлен класс Attachment, инкапсулирующий создание фото и текста для отправки через бота
+
+## v 2.0.2
+
+### English
+
+- Fixed bug with passing parameters by keys `-l` and `-e`
+- Added Template contract for template development
+- Added TemplateData class to store information for reports
+- Added RuTemplate and EngTemplate classes that implement the new contract
+- Added a Telegram class that implements the generation of a formatted message
+- Added a method for generating TemplateData in the Utils class
+- TemplateFactory class now returns formatted message
+- Implemented workflow for publishing releases with new assemblies to GitHub 
+
+### Russian
+
+- Исправлена ошибка с передачей параметров по ключам `-l` и `-e`
+- Добавлен контракт Template для разработки шаблонов
+- Добавлен класс TemplateData для хранения информации для отчетов
+- Добавлены классы RuTemplate и EngTemplate, реализующие новый контракт
+- Добавлен класс Telegram, реализующий генерацию отформатированного сообщения
+- Добавлен метод по генерации TemplateData в классе Utils
+- Класс TemplateFactory теперь возвращает отформатированное сообщение
+- Реализован workflow для публикации релизов с новыми сборками в GitHub

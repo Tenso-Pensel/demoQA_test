@@ -1,0 +1,54 @@
+{
+  "name": "@qa-guru/allure-notifications-plugin",
+  "version": "6.3.2",
+  "description": "Allure 3 plugin — thin wrapper over core + CLI messengers (Phase 5).",
+  "type": "module",
+  "main": "./dist/src/index.js",
+  "module": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": "./dist/src/index.js"
+  },
+  "files": [
+    "dist/src",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qa-guru/allure-notifications.git",
+    "directory": "packages/plugin"
+  },
+  "homepage": "https://github.com/qa-guru/allure-notifications#readme",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "pnpm run build && node ../../scripts/node-test-allure.mjs dist/test/*.test.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "@qa-guru/allure-notifications-config": "workspace:*",
+    "@qa-guru/allure-notifications-core": "workspace:*",
+    "@allurereport/plugin-api": "^3.14.3",
+    "@qa-guru/allure-notifications": "workspace:*"
+  },
+  "devDependencies": {
+    "@qa-guru/allure-notifications-test-meta": "workspace:*",
+    "@types/node": "26.1.2",
+    "allure-node-test": "3.10.2",
+    "typescript": "7.0.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "allure",
+    "plugin",
+    "notifications",
+    "telegram",
+    "testing"
+  ]
+}
