@@ -42,18 +42,20 @@ tasks.withType(Test).configureEach {
 }
 
 // Кастомная задача для запуска только тестов с тегом @Tag("simple")
-tasks.register("simple_test", Test) {
-    useJUnitPlatform {
-        includeTags("simple")
-        }
+def taggedTestTasks = [
+        simple_test      : 'simple',
+        one_property_test: 'one_property',
+        negativeTest     :  'negative',
+        positiveTest     :  'positive'
+]
+
+taggedTestTasks.each { taskName, tag ->
+    tasks.register(taskName, Test) {
         testClassesDirs = sourceSets.test.output.classesDirs
         classpath = sourceSets.test.runtimeClasspath
-    }
-        tasks.register("one_property_test", Test) {
-            useJUnitPlatform {
-                includeTags("one_property")
-            }
-            testClassesDirs = sourceSets.test.output.classesDirs
-            classpath = sourceSets.test.runtimeClasspath
-        }
 
+        useJUnitPlatform {
+            includeTags(tag)
+        }
+    }
+}

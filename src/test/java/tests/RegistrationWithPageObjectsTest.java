@@ -60,8 +60,6 @@ public class RegistrationWithPageObjectsTest extends TestBase {
 
 
 
-    @DisplayName("Проверяем негативный вариант регестарции")
-
     @Tag("negative")
     @Test
     @Feature("Авторизация")
@@ -74,7 +72,7 @@ public class RegistrationWithPageObjectsTest extends TestBase {
         String firstName = "Lexa";
         String lastName = "Gerasimov";
         String userMail = "Lexa@gera.ru";
-        String userNumber = "7904444444";
+        String userNumber = "790444444";
         String currentAddress = "Gerasim 12/12";
         registrationPageStep.openPage()
                 .setFirstName(firstName)
