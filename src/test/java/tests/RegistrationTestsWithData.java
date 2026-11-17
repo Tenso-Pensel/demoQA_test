@@ -1,5 +1,9 @@
 package tests;
 
+import io.qameta.allure.Feature;
+import io.qameta.allure.Link;
+import io.qameta.allure.Owner;
+import io.qameta.allure.Story;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -13,6 +17,10 @@ import static com.codeborne.selenide.Selenide.open;
 public class RegistrationTestsWithData extends TestBase{
 
     @Test
+    @Feature("Авторизация")
+    @Story("Вход с валидными данными")
+    @Owner("aleksey_qa")
+    @Link(name = "Homework", url = "https://demoqa.com/automation-practice-form")
     void Registration() {
 
 

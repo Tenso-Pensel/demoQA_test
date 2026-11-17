@@ -1,5 +1,9 @@
 package tests;
 
+import io.qameta.allure.Feature;
+import io.qameta.allure.Link;
+import io.qameta.allure.Owner;
+import io.qameta.allure.Story;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -17,6 +21,10 @@ public class RegistrationWithPageObjectsTest extends TestBase {
 
     @Tag("positive")
     @Test
+    @Feature("Авторизация")
+    @Story("Вход с валидными данными")
+    @Owner("aleksey_qa")
+    @Link(name = "Homework", url = "https://demoqa.com/automation-practice-form")
     void succesfullRegistration() {
 
         /// strings
@@ -56,6 +64,10 @@ public class RegistrationWithPageObjectsTest extends TestBase {
 
     @Tag("negative")
     @Test
+    @Feature("Авторизация")
+    @Story("Вход с невалидными данными")
+    @Owner("aleksey_qa")
+    @Link(name = "Homework", url = "https://demoqa.com/automation-practice-form")
     void unsuccesfullRegistration() {
 
         /// strings

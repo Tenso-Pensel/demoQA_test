@@ -1,6 +1,10 @@
 package tests;
 
 import com.codeborne.selenide.Configuration;
+import io.qameta.allure.Feature;
+import io.qameta.allure.Link;
+import io.qameta.allure.Owner;
+import io.qameta.allure.Story;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -14,6 +18,10 @@ import static com.codeborne.selenide.Selenide.$;
 public class RegistrationTests extends TestBase {
     @Disabled("Some reason")
     @Test
+    @Feature("Авторизация")
+    @Story("Вход с валидными данными")
+    @Owner("aleksey_qa")
+    @Link(name = "Homework", url = "https://demoqa.com/automation-practice-form")
     void Registration() {
 
 
