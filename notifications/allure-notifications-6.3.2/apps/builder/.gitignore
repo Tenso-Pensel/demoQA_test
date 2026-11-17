@@ -1,9 +1,0 @@
-.DS_Store
-*.log
-.idea/
-.vscode/
-node_modules/
-dist/
-test-results/
-playwright-report/
-playwright/.cache/
