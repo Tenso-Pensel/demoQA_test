@@ -113,4 +113,5 @@ public class RegistrationPageStep {
     public void setSubmit () {
         submitInput.click();
     }
+
 }

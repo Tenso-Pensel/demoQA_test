@@ -9,7 +9,7 @@ import static com.codeborne.selenide.Selectors.byText;
 import static com.codeborne.selenide.Selenide.$;
 import static com.codeborne.selenide.Selenide.open;
 
-@Tag("simple")
+    @Tag("positive")
 public class RegistrationTestsWithData extends TestBase{
 
     @Test

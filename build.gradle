@@ -1,7 +1,6 @@
 plugins {
     id 'java-library'
     id("io.qameta.allure") version "4.3.0"
-
 }
 
 repositories {
@@ -14,31 +13,47 @@ dependencies {
             "org.junit.jupiter:junit-jupiter:5.10.2",
             "net.datafaker:datafaker:2.7.0",
             "io.qameta.allure:allure-selenide:2.35.5",
-            "io.qameta.allure:allure-junit5:2.35.5")
+            "io.qameta.allure:allure-junit5:2.35.5"
+    )
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+allure {
+    version = "2.29.0" // Версия генератора отчетов Allure
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
-allure {
-    version = "2.29.0" // Версия генератора отчетов Allure
-}
-def selenideRemote = System.getProperty('selenide.remote')
-test {
+
+// Общая настройка сразу для ВСЕХ тестовых задач (и для стандартной test, и для simple_test)
+tasks.withType(Test).configureEach {
     useJUnitPlatform()
-    if (selenideRemote != null) {
-        systemProperty 'selenide.remote', selenideRemote
+    systemProperties(System.getProperties() as Map<String, ?>) // Пробрасывает любые -D параметры из консоли/Jenkins
+    outputs.upToDateWhen { false } // Чтобы тесты запускались всегда, даже если код не менялся
+
+    // Подробный вывод хода выполнения тестов в консоль (очень удобно для Jenkins)
+    testLogging {
+        lifecycle {
+            events "started", "skipped", "failed", "standard_error", "standard_out"
+            exceptionFormat "short"
+        }
     }
-    outputs.upToDateWhen { false }
 }
-tasks.register("simple_test", Test){
-    useJUnitPlatform{
+
+// Кастомная задача для запуска только тестов с тегом @Tag("simple")
+tasks.register("simple_test", Test) {
+    useJUnitPlatform {
         includeTags("simple")
+        }
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
     }
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    if (selenideRemote != null) {
-        systemProperty 'selenide.remote', selenideRemote
-    }
-}
+        tasks.register("one_property_test", Test) {
+            useJUnitPlatform {
+                includeTags("one_property")
+            }
+            testClassesDirs = sourceSets.test.output.classesDirs
+            classpath = sourceSets.test.runtimeClasspath
+        }
+

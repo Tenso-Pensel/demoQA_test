@@ -1,6 +1,7 @@
 package tests;
 
 import net.datafaker.Faker;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import pages.RegistrationPage;
 
@@ -8,6 +9,8 @@ import pages.RegistrationPage;
 public class RegistrationWithPageObjectsTestFaker extends TestBase {
     RegistrationPage registrationPage = new RegistrationPage();
     Faker faker = new Faker();
+
+    @Tag("positive")
     @Test
     void succesfullRegistration() {
 
@@ -39,6 +42,7 @@ public class RegistrationWithPageObjectsTestFaker extends TestBase {
                 .verifyResult("Address", currentAddress);
 
     }
+    @Tag("negative")
     @Test
     void failedRegistration() {
 
@@ -46,7 +50,7 @@ public class RegistrationWithPageObjectsTestFaker extends TestBase {
         String firstName = faker.name().firstName();
         String lastName = faker.name().lastName();
         String userMail = faker.internet().emailAddress();
-        String userNumber = faker.number().digits(10);
+        String userNumber = faker.number().digits(9);
         String currentAddress = faker.address().streetAddress();
         registrationPage.openPage()
                 .setFirstName(firstName)
@@ -61,13 +65,6 @@ public class RegistrationWithPageObjectsTestFaker extends TestBase {
                 .setUploadPicture()
                 .setState("NCR","Delhi")
                 .setSubmit();
-        registrationPage.verifyResultsModal()
-                .verifyResult("Student Name", firstName + " " + lastName)
-                .verifyResult("Student Email", userMail)
-                .verifyResult("Gender", "Male")
-                .verifyResult("Mobile", userNumber)
-                .verifyResult("Date of Birth","19 February,2001" )
-                .verifyResult("Address", currentAddress);
-
+        registrationPage.verifyNegativeResultsModal();
     }
 }

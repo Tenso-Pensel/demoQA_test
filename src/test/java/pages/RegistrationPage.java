@@ -2,6 +2,7 @@ package pages;
 
 import com.codeborne.selenide.SelenideElement;
 import pages.components.CalendarComponents;
+import pages.components.RegistrationNegativResultModal;
 import pages.components.RegistrationResultModal;
 
 import static com.codeborne.selenide.Condition.text;
@@ -14,6 +15,7 @@ public class RegistrationPage {
     private final String FORM_REGISTRATION ="/automation-practice-form";
     CalendarComponents calendarComponents = new CalendarComponents();
     private final String TITLE_TEXT = "Student Registration Form";
+    RegistrationNegativResultModal registrationNegativResultModal = new RegistrationNegativResultModal();
     RegistrationResultModal registrationResultModal = new RegistrationResultModal();
     private final SelenideElement
             practiceFormWrapperInput = $(".practice-form-wrapper"),
@@ -114,4 +116,9 @@ public class RegistrationPage {
         step("Нажимаем кнопку завершения", () ->
         submitInput.click());
     }
+    public RegistrationPage verifyNegativeResultsModal() {
+        registrationNegativResultModal.verifyNegativeModalRegistration();
+        return this;
+    }
+
 }

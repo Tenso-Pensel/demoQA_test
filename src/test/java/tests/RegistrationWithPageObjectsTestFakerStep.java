@@ -4,11 +4,18 @@ import net.datafaker.Faker;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import pages.RegistrationPage;
+import pages.RegistrationPageStep;
 
-@Tag("simple")
+@Tag("positive")
 public class RegistrationWithPageObjectsTestFakerStep extends TestBase {
     RegistrationPage registrationPage = new RegistrationPage();
+    RegistrationPageStep registrationPageStep = new RegistrationPageStep();
     Faker faker = new Faker();
+
+
+
+
+    @Tag("positive")
     @Test
     void succesfullRegistration() {
 
@@ -18,7 +25,7 @@ public class RegistrationWithPageObjectsTestFakerStep extends TestBase {
         String userMail = faker.internet().emailAddress();
         String userNumber = faker.number().digits(10);
         String currentAddress = faker.address().streetAddress();
-        registrationPage.openPage()
+        registrationPageStep.openPage()
                 .setFirstName(firstName)
                 .setLastName(lastName)
                 .setEmailUser(userMail)
@@ -38,8 +45,10 @@ public class RegistrationWithPageObjectsTestFakerStep extends TestBase {
                 .verifyResult("Mobile", userNumber)
                 .verifyResult("Date of Birth","19 February,2001" )
                 .verifyResult("Address", currentAddress);
-
     }
+
+
+    @Tag("negative")
     @Test
     void failedRegistration() {
 
@@ -62,13 +71,7 @@ public class RegistrationWithPageObjectsTestFakerStep extends TestBase {
                 .setUploadPicture()
                 .setState("NCR","Delhi")
                 .setSubmit();
-        registrationPage.verifyResultsModal()
-                .verifyResult("Student Name", firstName + " " + lastName)
-                .verifyResult("Student Email", userMail)
-                .verifyResult("Gender", "Male")
-                .verifyResult("Mobile", userNumber)
-                .verifyResult("Date of Birth","19 February,2001" )
-                .verifyResult("Address", currentAddress);
+        registrationPage.verifyNegativeResultsModal();
 
     }
 }
